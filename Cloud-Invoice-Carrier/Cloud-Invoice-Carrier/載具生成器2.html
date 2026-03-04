@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <!--
+    商用說明（請保留此段註解 / 或在你專案的 THIRD-PARTY-NOTICES 中保留）
+    - simple-keyboard: MIT License  (https://www.npmjs.com/package/simple-keyboard)
+    - JsBarcode:      MIT License  (https://github.com/lindell/JsBarcode)
+  -->
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/css/index.css" />
+
+  <title>載具輸入產生條碼</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: #0f0f10;
+      color: #fff;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", Arial;
+      display: flex;
+      min-height: 100vh;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .panel {
+      width: min(900px, 100%);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 24px;
+      padding: 22px;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.55);
+    }
+
+    .title {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0 0 10px;
+      letter-spacing: 1px;
+    }
+
+    .hint {
+      margin: 0 0 10px;
+      opacity: 0.78;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    #input {
+      width: 100%;
+      font-size: 30px;
+      padding: 16px 18px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.35);
+      color: #fff;
+      outline: none;
+      box-sizing: border-box;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    #input::placeholder { color: rgba(255,255,255,0.35); }
+
+    .err {
+      margin-top: 10px;
+      color: #ffb4b4;
+      font-size: 14px;
+      display:none;
+    }
+
+    .barcodeBox {
+      margin-top: 14px;
+      background: #ffffff;
+      border: 1px dashed rgba(0,0,0,0.18);
+      border-radius: 18px;
+      padding: 12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height: 150px;
+      overflow: hidden;
+    }
+
+    #barcode { background: transparent; border-radius: 12px; padding: 0; }
+
+    .simple-keyboard.hg-theme-default {
+      margin-top: 16px;
+      background: #1d1f22;
+      padding: 16px;
+      border-radius: 22px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+    }
+
+    .simple-keyboard .hg-button {
+      background: #2e3136;
+      color: #ffffff !important;
+      border-radius: 14px;
+      height: 62px;
+      font-size: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .simple-keyboard .hg-button span { color: #ffffff !important; }
+    .simple-keyboard .hg-button:hover { background: #3a3e45; }
+    .simple-keyboard .hg-button:active { background: #4b515b; }
+
+    .simple-keyboard .hg-button[data-skbtn="{bksp}"] { background: #3b3b3b; }
+    .simple-keyboard .hg-button[data-skbtn="{clear}"] { background: #6b4b00; font-weight: 700; }
+    .simple-keyboard .hg-button[data-skbtn="{enter}"] { background: #c62828; font-weight: 800; width: 160px; }
+    .simple-keyboard .hg-button[data-skbtn="{gen}"] { background: #000000; font-weight: 800; width: 160px; }
+
+    .card-templates {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .card-option {
+      width: 100%;
+      border-radius: 12px;
+      cursor: pointer;
+      border: 3px solid transparent;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+      background: rgba(0,0,0,0.2);
+      min-height: 120px;
+    }
+    .card-option:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.7);
+    }
+    .card-option.selected {
+      border-color: #ffd54f;
+    }
+    .preview-box {
+      margin-top: 18px;
+      padding: 12px;
+      border-radius: 18px;
+      background: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #previewCanvas {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+    .buttons-row {
+      margin-top: 18px;
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+    }
+    .buttons-row button {
+      min-width: 96px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: none;
+      font-size: 16px;
+      letter-spacing: 4px;
+      cursor: pointer;
+    }
+    #btnBack {
+      background: #eee;
+      color: #333;
+    }
+    #btnPrint {
+      background: #000;
+      color: #fff;
+    }
+
+    @media (max-width: 480px) {
+      #input { font-size: 24px; }
+      .simple-keyboard .hg-button { height: 54px; font-size: 18px; }
+      #barcode { transform: scale(0.95); transform-origin: center; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="step1" class="panel">
+    <h1 class="title">輸入載具號碼 → 產生載具</h1>
+    <p class="hint">
+      載具為 8 碼，開頭「/」，後面 7 碼（可用 A-Z、0-9、+、-、.）
+    </p>
+
+    <input id="input" placeholder="/JNXJ3S0（或輸入 7 碼：JNXJ3S0）" autocomplete="off" inputmode="none" />
+
+    <div id="err" class="err"></div>
+
+    <div class="barcodeBox" aria-label="barcode">
+      <svg id="barcode"></svg>
+    </div>
+
+    <div class="simple-keyboard"></div>
+  </div>
+
+  <div id="step2" class="panel" style="display:none;">
+    <h1 class="title">選擇卡片樣式</h1>
+    <div class="card-templates">
+      <img class="card-option selected" data-template="1" alt="樣式1" />
+      <img class="card-option" data-template="2" alt="樣式2" />
+      <img class="card-option" data-template="3" alt="樣式3" />
+      <img class="card-option" data-template="4" alt="樣式4" />
+    </div>
+    <h2 class="title" style="margin-top:24px;">成品預覽</h2>
+    <div class="preview-box">
+      <canvas id="previewCanvas"></canvas>
+    </div>
+    <div class="buttons-row">
+      <button type="button" id="btnBack">重選</button>
+      <button type="button" id="btnPrint">列印</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/index.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.12.1/JsBarcode.all.min.js"></script>
+
+  <script>
+    const Keyboard = window.SimpleKeyboard.default;
+    const inputEl = document.querySelector("#input");
+    const errEl = document.querySelector("#err");
+
+    // 由 C# 注入的背景圖 data URL（避免 WebView2 阻擋 file:// 載入）
+    window.__CARRIER_BACKGROUND_DATA_URL__ = null;
+    window.__CARRIER_BACKGROUND_URLS__ = null;
+    window.__CARRIER_ACTUAL_BACKGROUND_URLS__ = null;
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.addEventListener("message", function(e) {
+        var d = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+        if (!d) return;
+        if (d.type === "setBackgroundImage" && d.dataUrl) {
+          window.__CARRIER_BACKGROUND_DATA_URL__ = d.dataUrl;
+        }
+        if (d.type === "setBackgroundImages" && Array.isArray(d.dataUrls)) {
+          window.__CARRIER_BACKGROUND_URLS__ = d.dataUrls;
+          document.querySelectorAll(".card-option").forEach(function(el, i) {
+            if (d.dataUrls[i]) el.src = d.dataUrls[i];
+          });
+        }
+        if (d.type === "setActualBackgroundImages" && Array.isArray(d.dataUrls)) {
+          window.__CARRIER_ACTUAL_BACKGROUND_URLS__ = d.dataUrls;
+        }
+      });
+    }
+
+    let selectedTemplate = 1;
+
+    // 手機條碼載具：總長 8（/ + 7）
+    const MAX_LEN = 8;
+
+    function showErr(msg) {
+      errEl.textContent = msg;
+      errEl.style.display = "block";
+    }
+    function clearErr() {
+      errEl.textContent = "";
+      errEl.style.display = "none";
+    }
+
+    function normalize(value) {
+      let cleaned = (value || "")
+        .toUpperCase()
+        .replace(/[^A-Z0-9+\-\./]/g, "");
+
+      // 只輸入 7 碼時自動補 /
+      if (cleaned.length === 7 && cleaned[0] !== "/") cleaned = "/" + cleaned;
+
+      cleaned = cleaned.slice(0, MAX_LEN);
+      return cleaned;
+    }
+
+    function isValidCarrier(v) {
+      // / + 7 碼（A-Z 0-9 + - .）
+      return /^\/[A-Z0-9+\-\.]{7}$/.test(v);
+    }
+
+    function renderBarcode(carrier) {
+      const svg = document.querySelector("#barcode");
+      svg.innerHTML = "";
+      JsBarcode("#barcode", carrier, {
+        format: "CODE39",
+        width: 3,
+        height: 90,
+        margin: 8,
+        displayValue: true,
+        fontSize: 18,
+        textMargin: 6,
+        background: "transparent",   // 條碼背景透明
+        lineColor: "#000000"         // 條碼線條維持黑色
+      });
+    }
+
+    // 預覽用背景：載具背景1~4
+    function getPreviewBackgroundUrlForTemplate(idx) {
+      var urls = window.__CARRIER_BACKGROUND_URLS__;
+      if (urls && urls[idx - 1]) return urls[idx - 1];
+      if (idx === 1 && window.__CARRIER_BACKGROUND_DATA_URL__) return window.__CARRIER_BACKGROUND_DATA_URL__;
+      var base = location.href.substring(0, location.href.lastIndexOf("/") + 1);
+      return base + "picture/載具背景" + idx + ".png";
+    }
+
+    // 實際合成與列印用背景：實際背景1~4
+    function getActualBackgroundUrlForTemplate(idx) {
+      var urls = window.__CARRIER_ACTUAL_BACKGROUND_URLS__;
+      if (urls && urls[idx - 1]) return urls[idx - 1];
+      var base = location.href.substring(0, location.href.lastIndexOf("/") + 1);
+      return base + "picture/實際背景" + idx + ".png";
+    }
+
+    function getBackgroundUrl() {
+      // 列印與下載時改用「實際背景」圖片（實際背景1~4.png）
+      return getActualBackgroundUrlForTemplate(selectedTemplate);
+    }
+
+    function renderPreview(templateIndex) {
+      var svg = document.querySelector("#barcode");
+      if (!svg || !svg.outerHTML || svg.innerHTML.trim() === "") return;
+
+      var bgUrl = getPreviewBackgroundUrlForTemplate(templateIndex);
+      var bgImg = new Image();
+      var barcodeImg = new Image();
+      var svgData = new XMLSerializer().serializeToString(svg);
+      var svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      var svgUrl = URL.createObjectURL(svgBlob);
+      barcodeImg.src = svgUrl;
+
+      Promise.all([
+        new Promise(function(resolve, reject) { bgImg.onload = function() { resolve(bgImg); }; bgImg.onerror = function() { reject(); }; bgImg.src = bgUrl; }),
+        new Promise(function(resolve, reject) { barcodeImg.onload = function() { resolve(barcodeImg); }; barcodeImg.onerror = function() { reject(); }; barcodeImg.src = svgUrl; })
+      ]).then(function(imgs) {
+        var loadedBg = imgs[0];
+        var loadedBarcode = imgs[1];
+        var canvas = document.getElementById("previewCanvas");
+        canvas.width = loadedBg.width;
+        canvas.height = loadedBg.height;
+        var ctx = canvas.getContext("2d");
+        ctx.drawImage(loadedBg, 0, 0, loadedBg.width, loadedBg.height);
+        var baseWidth = loadedBg.width * 0.6;
+        var baseScale = baseWidth / loadedBarcode.width;
+        var baseHeight = loadedBarcode.height * baseScale;
+        var targetWidth = baseWidth + 346;
+        var targetHeight = baseHeight + 77;
+        ctx.drawImage(loadedBarcode, 105, 102, targetWidth, targetHeight);
+      }).catch(function(err) {
+        alert("背景圖片載入失敗，無法產生預覽。");
+        console.error(err);
+      });
+    }
+
+    function downloadWithBackground(filename = "carrier-with-background.png") {
+      const svg = document.querySelector("#barcode");
+      if (!svg || !svg.outerHTML || svg.innerHTML.trim() === "") return false;
+
+      const backgroundUrl = getBackgroundUrl();
+      const bgImg = new Image();
+      const barcodeImg = new Image();
+
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const svgUrl = URL.createObjectURL(svgBlob);
+
+      // 使用 Promise.all 確保兩張圖都載入後再繪製，避免競爭危害
+      Promise.all([
+        new Promise(function(resolve, reject) { bgImg.onload = function() { resolve(bgImg); }; bgImg.onerror = function() { reject(new Error("bg load fail")); }; bgImg.src = backgroundUrl; }),
+        new Promise(function(resolve, reject) { barcodeImg.onload = function() { resolve(barcodeImg); }; barcodeImg.onerror = function() { reject(new Error("barcode load fail")); }; barcodeImg.src = svgUrl; })
+      ]).then(function(imgs) {
+        var loadedBg = imgs[0];
+        var loadedBarcode = imgs[1];
+        const canvas = document.createElement("canvas");
+        canvas.width = loadedBg.width;
+        canvas.height = loadedBg.height;
+        const ctx = canvas.getContext("2d");
+
+        ctx.drawImage(loadedBg, 0, 0, loadedBg.width, loadedBg.height);
+
+        const baseWidth = loadedBg.width * 0.6;
+        const baseScale = baseWidth / loadedBarcode.width;
+        const baseHeight = loadedBarcode.height * baseScale;
+        const targetWidth = baseWidth ;
+        const targetHeight = baseHeight ;
+        const x = 199;
+        const y = 142;
+
+        ctx.drawImage(loadedBarcode, x, y, targetWidth, targetHeight);
+
+        const dataUrl = canvas.toDataURL("image/png");
+        if (window.chrome && window.chrome.webview) {
+          window.chrome.webview.postMessage({
+            type: "carrierImage",
+            fileName: filename,
+            dataUrl: dataUrl
+          });
+        }
+
+        canvas.toBlob(function(blob) {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        }, "image/png");
+      }).catch(function(err) {
+        alert("背景圖片載入失敗，無法下載或列印。");
+        console.error(err);
+      });
+
+      return true;
+    }
+
+    // 產生條碼：成功回傳 true、失敗回傳 false
+    function generate() {
+      clearErr();
+      const fixed = normalize(inputEl.value);
+      inputEl.value = fixed;
+      keyboard.setInput(fixed);
+
+      if (!isValidCarrier(fixed)) {
+        showErr("格式不正確：請輸入「/」+ 7 碼（A-Z、0-9、+、-、.），例如 /A1B2C.4（或直接輸入 7 碼會自動補 /）");
+        document.querySelector("#barcode").innerHTML = "";
+        return false;
+      }
+
+      renderBarcode(fixed);
+      return true;
+    }
+
+    const keyboard = new Keyboard(".simple-keyboard", {
+      theme: "hg-theme-default",
+      layout: {
+        default: [
+          "1 2 3 4 5 6 7 8 9 0",
+          "Q W E R T Y U I O P",
+          "A S D F G H J K L",
+          "/ + - . Z X C V B N M {bksp}",
+          "{clear} {enter} {gen}"
+        ]
+      },
+      display: {
+        "{bksp}": "⌫",
+        "{enter}": "確定",
+        "{clear}": "清除",
+        "{gen}": "下一步"
+      },
+
+      onChange: value => {
+        const fixed = normalize(value);
+        if (fixed !== value) keyboard.setInput(fixed);
+        inputEl.value = fixed;
+      },
+
+      onKeyPress: button => {
+        if (button === "{enter}") {
+          generate(); // 只產生，不下載
+        }
+
+        if (button === "{gen}") {
+          var ok = generate();
+          if (ok) {
+            document.getElementById("step1").style.display = "none";
+            document.getElementById("step2").style.display = "block";
+            selectedTemplate = 1;
+            document.querySelectorAll(".card-option").forEach(function(el) {
+              el.classList.toggle("selected", el.getAttribute("data-template") === "1");
+            });
+            renderPreview(1);
+          }
+        }
+
+        if (button === "{clear}") {
+          keyboard.clearInput();
+          inputEl.value = "";
+          clearErr();
+          document.querySelector("#barcode").innerHTML = "";
+        }
+      }
+    });
+
+    inputEl.addEventListener("input", (e) => {
+      const fixed = normalize(e.target.value);
+      if (fixed !== e.target.value) e.target.value = fixed;
+      keyboard.setInput(fixed);
+    });
+
+    inputEl.addEventListener("focus", function() {
+      keyboard.setInput(normalize(inputEl.value));
+    });
+
+    document.querySelectorAll(".card-option").forEach(function(el) {
+      el.addEventListener("click", function() {
+        selectedTemplate = parseInt(el.getAttribute("data-template") || "1", 10);
+        document.querySelectorAll(".card-option").forEach(function(x) {
+          x.classList.toggle("selected", x === el);
+        });
+        renderPreview(selectedTemplate);
+      });
+    });
+
+    document.getElementById("btnBack").addEventListener("click", function() {
+      document.getElementById("step2").style.display = "none";
+      document.getElementById("step1").style.display = "block";
+    });
+
+    document.getElementById("btnPrint").addEventListener("click", function() {
+      downloadWithBackground("carrier-with-background.png");
+    });
+
+    inputEl.focus();
+  </script>
+</body>
+</html>
