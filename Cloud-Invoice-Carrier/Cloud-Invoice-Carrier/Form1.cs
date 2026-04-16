@@ -28,15 +28,44 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
         {
             await webView21.EnsureCoreWebView2Async(null);
 
-            // 使用輸出目錄路徑，發布時請將 載具生成器2.html 複製到程式同目錄（或設為 Content + 複製到輸出）
-            var htmlPath = Path.Combine(Application.StartupPath, "載具生成器2.html");
+            AppEnvConfig.Load(Application.StartupPath);
+
+            var htmlFile = AppEnvConfig.Mode == AppEnvConfig.AppMode.NameLabel
+                ? "姓名貼鍵盤.html"
+                : "載具生成器2.html";
+
+            // 使用輸出目錄路徑；發布時請將 html 與 .env 放在 exe 同目錄
+            var htmlPath = Path.Combine(Application.StartupPath, htmlFile);
             if (!File.Exists(htmlPath))
-                htmlPath = @"C:\Users\user\Documents\GitHub\Cloud-Invoice-Carrier\Cloud-Invoice-Carrier\Cloud-Invoice-Carrier\載具生成器2.html"; // 開發時 fallback
+            {
+                htmlPath = AppEnvConfig.Mode == AppEnvConfig.AppMode.NameLabel
+                    ? @"C:\Users\user\Documents\GitHub\Cloud-Invoice-Carrier\Cloud-Invoice-Carrier\Cloud-Invoice-Carrier\姓名貼鍵盤.html"
+                    : @"C:\Users\user\Documents\GitHub\Cloud-Invoice-Carrier\Cloud-Invoice-Carrier\Cloud-Invoice-Carrier\載具生成器2.html"; // 開發時 fallback
+            }
             webView21.CoreWebView2.WebMessageReceived += WebView_WebMessageReceived;
 
             webView21.CoreWebView2.NavigationCompleted += (s, args) =>
             {
                 if (!args.IsSuccess) return;
+                if (AppEnvConfig.Mode == AppEnvConfig.AppMode.NameLabel)
+                {
+                    try
+                    {
+                        var dbPath = Path.Combine(Application.StartupPath, "jszhuyin", "database.data");
+                        if (File.Exists(dbPath))
+                        {
+                            var base64 = Convert.ToBase64String(File.ReadAllBytes(dbPath));
+                            webView21.CoreWebView2.PostWebMessageAsJson(
+                                JsonSerializer.Serialize(new { type = "setJsZhuyinDatabase", base64 }));
+                        }
+                    }
+                    catch
+                    {
+                        // 由前端顯示錯誤訊息，避免阻斷主流程
+                    }
+                    return;
+                }
+
                 var asm = Assembly.GetExecutingAssembly();
                 // 載具背景（畫面預覽用）
                 var previewNames = asm.GetManifestResourceNames()
@@ -111,9 +140,11 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
         }
 
         // 用 nullable 避免 CS8618 警告
-        private sealed class CarrierImageMessage
+        private sealed class HostWebMessage
         {
             public string? type { get; set; }
+            /// <summary>姓名貼模式：要列印的中文字（送 TSC TSPL）。</summary>
+            public string? text { get; set; }
             public string? fileName { get; set; }
             public string? dataUrl { get; set; }
             public string? dataUrlBack { get; set; }
@@ -176,9 +207,40 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
             try
             {
                 var json = e.WebMessageAsJson;
-                var msg = JsonSerializer.Deserialize<CarrierImageMessage>(json, WebMessageJsonOptions);
+                var msg = JsonSerializer.Deserialize<HostWebMessage>(json, WebMessageJsonOptions);
                 if (msg == null || string.IsNullOrEmpty(msg.type))
                     return;
+
+                if (msg.type.Equals("tscNameLabelPrint", StringComparison.OrdinalIgnoreCase))
+                {
+                    var t = (msg.text ?? string.Empty).Trim();
+                    if (t.Length == 0)
+                    {
+                        MessageBox.Show("請先輸入要列印的中文字。", "姓名貼列印", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+
+                    try
+                    {
+                        TscTsplNameStickerPrinter.Print(
+                            t,
+                            AppEnvConfig.TscWindowsPrinterName,
+                            AppEnvConfig.TscDpi,
+                            AppEnvConfig.LabelWidthMm,
+                            AppEnvConfig.LabelHeightMm,
+                            AppEnvConfig.LabelGapMm);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(
+                            "送印至 TSC 時發生錯誤：\n" + ex.Message,
+                            "姓名貼列印失敗",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                    }
+
+                    return;
+                }
 
                 // 本機圖檔直接由 C# 讀取（略過 HTML canvas，避免 file:// 造成 canvas 污染無法 toDataURL）
                 if (msg.type.Equals("printLocalImageFile", StringComparison.OrdinalIgnoreCase))

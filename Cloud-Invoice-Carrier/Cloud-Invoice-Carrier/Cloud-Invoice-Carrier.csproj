@@ -44,6 +44,18 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update=".env.example">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="姓名貼鍵盤.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="zhuyin-dict.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="jszhuyin\database.data">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="載具生成器2.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -53,6 +65,12 @@
     <None Update="picture\titan02.jpg">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="jszhuyin\**\*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

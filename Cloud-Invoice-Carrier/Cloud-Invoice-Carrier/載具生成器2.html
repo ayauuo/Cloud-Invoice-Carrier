@@ -146,10 +146,48 @@
       justify-content: center;
       align-items: center;
     }
-    #previewCanvas {
+    .flip-card {
+      width: min(100%, 860px);
+      aspect-ratio: 1.58 / 1;
+      perspective: 1400px;
+      user-select: none;
+      touch-action: pan-y;
+    }
+    .flip-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform .58s cubic-bezier(.2,.7,.2,1);
+    }
+    .flip-inner.is-back {
+      transform: rotateY(180deg);
+    }
+    .flip-face {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      overflow: hidden;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    .flip-face.back {
+      transform: rotateY(180deg);
+    }
+    .flip-face canvas {
       max-width: 100%;
+      width: 100%;
       height: auto;
       display: block;
+    }
+    .flip-hint {
+      margin-top: 10px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.68);
+      text-align: center;
     }
     .buttons-row {
       margin-top: 18px;
@@ -211,8 +249,18 @@
     </div>
     <h2 class="title" style="margin-top:24px;">成品預覽</h2>
     <div class="preview-box">
-      <canvas id="previewCanvas"></canvas>
+      <div class="flip-card" id="flipCard" aria-label="3D 預覽卡片">
+        <div class="flip-inner" id="flipInner">
+          <div class="flip-face front">
+            <canvas id="previewFrontCanvas"></canvas>
+          </div>
+          <div class="flip-face back">
+            <canvas id="previewBackCanvas"></canvas>
+          </div>
+        </div>
+      </div>
     </div>
+    <p class="flip-hint">左右滑動可查看正反面（也可點擊預覽切換）</p>
     <p class="hint" style="margin-top:12px; margin-bottom:0; text-align:center;">列印內容</p>
     <div class="print-options" style="margin-top:8px; display:flex; justify-content:center; gap:18px; flex-wrap:wrap;">
       <label style="display:flex; align-items:center; gap:8px; font-size:16px; cursor:pointer; user-select:none;">
@@ -296,6 +344,7 @@
     }
 
     let selectedTemplate = 1;
+    let previewShowingBack = false;
     /** 樣式 1～4 與 001 列印各自儲存：'auto'|'landscape'|'portrait' */
     const printLandscapeByTemplate = { 1: "auto", 2: "auto", 3: "auto", 4: "auto", img001: "auto", giant0102: "auto" };
     /** 目前畫面上「圖檔方向」對應的儲存鍵：1～4 或 'img001' 或 'giant0102' */
@@ -427,12 +476,33 @@
       return out;
     }
 
+    function getBackPreviewBackgroundUrlForTemplate(idx) {
+      var urls = window.__CARRIER_ACTUAL_BACKGROUND_URLS__;
+      if (urls && urls[idx - 1]) return urls[idx - 1];
+      return getPreviewBackgroundUrlForTemplate(idx);
+    }
+
+    function drawPreviewCanvas(canvas, loadedBg, loadedBarcode, barcodeX, barcodeY, widthPlus, heightPlus) {
+      canvas.width = loadedBg.width;
+      canvas.height = loadedBg.height;
+      var ctx = canvas.getContext("2d");
+      ctx.drawImage(loadedBg, 0, 0, loadedBg.width, loadedBg.height);
+      var baseWidth = loadedBg.width * 0.6;
+      var baseScale = baseWidth / loadedBarcode.width;
+      var baseHeight = loadedBarcode.height * baseScale;
+      var targetWidth = baseWidth + widthPlus;
+      var targetHeight = baseHeight + heightPlus;
+      ctx.drawImage(loadedBarcode, barcodeX, barcodeY, targetWidth, targetHeight);
+    }
+
     function renderPreview(templateIndex) {
       var svg = document.querySelector("#barcode");
       if (!svg || !svg.outerHTML || svg.innerHTML.trim() === "") return;
 
-      var bgUrl = getPreviewBackgroundUrlForTemplate(templateIndex);
-      var bgImg = new Image();
+      var frontBgUrl = getPreviewBackgroundUrlForTemplate(templateIndex);
+      var backBgUrl = getBackPreviewBackgroundUrlForTemplate(templateIndex);
+      var frontBgImg = new Image();
+      var backBgImg = new Image();
       var barcodeImg = new Image();
       var svgData = new XMLSerializer().serializeToString(svg);
       var svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
@@ -440,26 +510,64 @@
       barcodeImg.src = svgUrl;
 
       Promise.all([
-        new Promise(function(resolve, reject) { bgImg.onload = function() { resolve(bgImg); }; bgImg.onerror = function() { reject(); }; bgImg.src = bgUrl; }),
+        new Promise(function(resolve, reject) { frontBgImg.onload = function() { resolve(frontBgImg); }; frontBgImg.onerror = function() { reject(); }; frontBgImg.src = frontBgUrl; }),
+        new Promise(function(resolve, reject) { backBgImg.onload = function() { resolve(backBgImg); }; backBgImg.onerror = function() { reject(); }; backBgImg.src = backBgUrl; }),
         new Promise(function(resolve, reject) { barcodeImg.onload = function() { resolve(barcodeImg); }; barcodeImg.onerror = function() { reject(); }; barcodeImg.src = svgUrl; })
       ]).then(function(imgs) {
-        var loadedBg = imgs[0];
-        var loadedBarcode = imgs[1];
-        var canvas = document.getElementById("previewCanvas");
-        canvas.width = loadedBg.width;
-        canvas.height = loadedBg.height;
-        var ctx = canvas.getContext("2d");
-        ctx.drawImage(loadedBg, 0, 0, loadedBg.width, loadedBg.height);
-        var baseWidth = loadedBg.width * 0.6;
-        var baseScale = baseWidth / loadedBarcode.width;
-        var baseHeight = loadedBarcode.height * baseScale;
-        var targetWidth = baseWidth + 346;
-        var targetHeight = baseHeight + 77;
-        ctx.drawImage(loadedBarcode, 102, 409, targetWidth, targetHeight);
+        var loadedFrontBg = imgs[0];
+        var loadedBackBg = imgs[1];
+        var loadedBarcode = imgs[2];
+        var frontCanvas = document.getElementById("previewFrontCanvas");
+        var backCanvas = document.getElementById("previewBackCanvas");
+
+        drawPreviewCanvas(frontCanvas, loadedFrontBg, loadedBarcode, 102, 409, 346, 77);
+        drawPreviewCanvas(backCanvas, loadedBackBg, loadedBarcode, 102, 409, 346, 77);
       }).catch(function(err) {
         alert("背景圖片載入失敗，無法產生預覽。");
         console.error(err);
       });
+    }
+
+    function setPreviewCardSide(showBack) {
+      previewShowingBack = !!showBack;
+      var el = document.getElementById("flipInner");
+      if (!el) return;
+      el.classList.toggle("is-back", previewShowingBack);
+    }
+
+    function initPreviewCardInteractions() {
+      var card = document.getElementById("flipCard");
+      if (!card) return;
+      var startX = 0;
+      var moved = false;
+      var threshold = 45;
+
+      card.addEventListener("click", function() {
+        if (moved) return;
+        setPreviewCardSide(!previewShowingBack);
+      });
+
+      card.addEventListener("pointerdown", function(e) {
+        startX = e.clientX;
+        moved = false;
+      });
+
+      card.addEventListener("pointermove", function(e) {
+        if (!startX) return;
+        var deltaX = e.clientX - startX;
+        if (Math.abs(deltaX) > 8) moved = true;
+      });
+
+      card.addEventListener("pointerup", function(e) {
+        if (!startX) return;
+        var deltaX = e.clientX - startX;
+        if (Math.abs(deltaX) > threshold) {
+          setPreviewCardSide(deltaX < 0);
+        }
+        startX = 0;
+      });
+
+      card.addEventListener("pointercancel", function() { startX = 0; });
     }
 
     /** 將列印資料送給 WinForms（WebView2）；若在瀏覽器開 HTML 則無法列印到 HiTi。 */
@@ -687,6 +795,7 @@
             document.querySelectorAll(".card-option").forEach(function(el) {
               el.classList.toggle("selected", el.getAttribute("data-template") === "1");
             });
+            setPreviewCardSide(false);
             renderPreview(1);
           }
         }
@@ -719,6 +828,7 @@
         document.querySelectorAll(".card-option").forEach(function(x) {
           x.classList.toggle("selected", x === el);
         });
+        setPreviewCardSide(false);
         renderPreview(selectedTemplate);
       });
     });
@@ -745,6 +855,7 @@
     document.getElementById("btnBack").addEventListener("click", function() {
       document.getElementById("step2").style.display = "none";
       document.getElementById("step1").style.display = "block";
+      setPreviewCardSide(false);
     });
 
     document.getElementById("btnPrint").addEventListener("click", function() {
@@ -759,6 +870,7 @@
       }
     });
 
+    initPreviewCardInteractions();
     inputEl.focus();
   </script>
 </body>

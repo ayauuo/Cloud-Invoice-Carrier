@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>姓名貼輸入（TSC）</title>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    body {
+      margin: 0;
+      background: #0f0f10;
+      color: #fff;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", "Microsoft JhengHei", Arial;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      box-sizing: border-box;
+    }
+    .panel {
+      width: min(980px, 100%);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 22px;
+      padding: 20px;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.55);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      letter-spacing: 1px;
+    }
+    .hint {
+      margin: 0 0 14px;
+      opacity: 0.78;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    #nameInput {
+      width: 100%;
+      min-height: 96px;
+      font-size: 28px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.35);
+      color: #fff;
+      outline: none;
+      box-sizing: border-box;
+      resize: vertical;
+    }
+    .kbd-title {
+      margin: 14px 0 8px;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      opacity: 0.9;
+    }
+    .ime-box {
+      margin-top: 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      padding: 10px;
+    }
+    .ime-composition {
+      min-height: 34px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(0,0,0,0.25);
+      padding: 6px 10px;
+      font-size: 24px;
+      color: #ffd54f;
+      letter-spacing: 3px;
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .ime-candidates {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .ime-controls {
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .ime-controls button {
+      border: 1px solid rgba(255,255,255,0.15);
+      background: #2a2d33;
+      color: #fff;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .ime-controls button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .ime-page-info {
+      font-size: 12px;
+      opacity: 0.75;
+    }
+    .cand {
+      border: 1px solid rgba(255,255,255,0.1);
+      background: #202225;
+      color: #fff;
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-size: 20px;
+      cursor: pointer;
+      min-width: 46px;
+      text-align: center;
+    }
+    .cand:hover { background: #30343a; }
+    .cand-num {
+      display: inline-block;
+      opacity: 0.6;
+      margin-right: 4px;
+      font-size: 12px;
+      vertical-align: middle;
+    }
+    .kb {
+      display: grid;
+      gap: 8px;
+      margin-top: 4px;
+      padding: 4px 0 8px;
+    }
+    .kb-row {
+      display: grid;
+      grid-template-columns: repeat(10, minmax(0, 1fr));
+      gap: 8px;
+      justify-items: stretch;
+    }
+    .key {
+      border: 1px solid rgba(255,255,255,0.1);
+      background: #2e3136;
+      color: #fff;
+      border-radius: 12px;
+      min-width: 0;
+      height: 52px;
+      padding: 0;
+      font-size: 24px;
+      font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
+      cursor: pointer;
+      width: 100%;
+    }
+    .key:hover { background: #3a3e45; }
+    .key:active { background: #4b515b; }
+    .key-wide {
+      grid-column: span 3;
+      font-size: 16px;
+      letter-spacing: 2px;
+    }
+    .key-action {
+      font-size: 16px;
+      letter-spacing: 1px;
+      background: #3b3b3b;
+    }
+    .row-shift-1 { padding-left: 4%; padding-right: 4%; }
+    .row-shift-2 { padding-left: 8%; padding-right: 8%; }
+    @media (max-width: 640px) {
+      .kb-row { gap: 6px; }
+      .key { height: 48px; font-size: 22px; }
+      .row-shift-1 { padding-left: 2%; padding-right: 2%; }
+      .row-shift-2 { padding-left: 4%; padding-right: 4%; }
+    }
+    .row-actions {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    .row-actions button {
+      min-width: 120px;
+      padding: 12px 16px;
+      border-radius: 999px;
+      border: none;
+      font-size: 16px;
+      letter-spacing: 2px;
+      cursor: pointer;
+    }
+    #btnBksp { background: #3b3b3b; color: #fff; }
+    #btnClear { background: #6b4b00; color: #fff; font-weight: 700; }
+    #btnPrint { background: #c62828; color: #fff; font-weight: 800; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>姓名貼輸入</h1>
+    <p class="hint">
+      下方為<strong>手機風格注音鍵盤</strong>：先打注音，再點候選中文字輸入。
+      仍可搭配實體鍵盤與 Windows 注音 IME。列印會透過主程式送 TSPL 點陣到 <strong>TSC TTP-345</strong>。
+    </p>
+
+    <textarea id="nameInput" lang="zh-TW" inputmode="text" placeholder="請輸入姓名、注音或要列印的文字"></textarea>
+
+    <div class="ime-box" aria-label="注音輸入法區">
+      <div class="ime-composition" id="composition">（請輸入注音）</div>
+      <div class="ime-candidates" id="candidates"></div>
+      <div class="ime-controls" id="imeControls" style="display:none;">
+        <button type="button" id="btnExpandCandidates">展開</button>
+        <button type="button" id="btnPrevCandidates">上一頁</button>
+        <button type="button" id="btnNextCandidates">下一頁</button>
+        <span class="ime-page-info" id="candidatesPageInfo"></span>
+      </div>
+    </div>
+
+    <div class="kbd-title" id="kbdLabel">注音鍵盤（含候選字）</div>
+    <div class="kb" id="keyboard" role="group" aria-labelledby="kbdLabel"></div>
+
+    <div class="row-actions">
+      <button type="button" id="btnBksp">退格</button>
+      <button type="button" id="btnClear">清除</button>
+      <button type="button" id="btnPrint">列印到 TSC</button>
+    </div>
+  </div>
+
+  <script src="jszhuyin/bopomofo_encoder.js"></script>
+  <script src="jszhuyin/jszhuyin_data_pack.js"></script>
+  <script src="jszhuyin/storage.js"></script>
+  <script src="jszhuyin/data_loader.js"></script>
+  <script src="jszhuyin/jszhuyin.js"></script>
+  <script src="jszhuyin/jszhuyin_server.js"></script>
+  <script src="jszhuyin/client.js"></script>
+  <script>
+    (function () {
+      var ta = document.getElementById("nameInput");
+      var kb = document.getElementById("keyboard");
+      var compositionEl = document.getElementById("composition");
+      var candidatesEl = document.getElementById("candidates");
+      var imeControlsEl = document.getElementById("imeControls");
+      var btnExpandCandidatesEl = document.getElementById("btnExpandCandidates");
+      var btnPrevCandidatesEl = document.getElementById("btnPrevCandidates");
+      var btnNextCandidatesEl = document.getElementById("btnNextCandidates");
+      var candidatesPageInfoEl = document.getElementById("candidatesPageInfo");
+      var composition = "";
+      var ime = null;
+      var candidates = [];
+      var pendingDbArrayBuffer = null;
+      var waitingDbResolver = null;
+      var candidatesExpanded = false;
+      var expandedPage = 0;
+      var COLLAPSED_LIMIT = 10;
+      var EXPANDED_PAGE_SIZE = 50;
+
+      // 手機感注音盤：四列主鍵 + 一列功能鍵
+      var rows = [
+        ["ㄅ", "ㄉ", "ˇ", "ˋ", "ㄓ", "ˊ", "˙", "ㄚ", "ㄞ", "ㄢ"],
+        ["ㄆ", "ㄊ", "ㄍ", "ㄐ", "ㄔ", "ㄗ", "ㄧ", "ㄛ", "ㄟ", "ㄣ"],
+        ["ㄇ", "ㄋ", "ㄎ", "ㄑ", "ㄕ", "ㄘ", "ㄨ", "ㄜ", "ㄠ", "ㄤ"],
+        ["ㄈ", "ㄌ", "ㄏ", "ㄒ", "ㄖ", "ㄙ", "ㄩ", "ㄝ", "ㄡ", "ㄥ"],
+        [{ label: "送出", ch: " ", cls: "key-action" }, { label: "空白", ch: " ", cls: "key-wide" }]
+      ];
+
+
+      function insertAtCaret(text) {
+        ta.focus();
+        var start = ta.selectionStart;
+        var end = ta.selectionEnd;
+        var v = ta.value;
+        ta.value = v.slice(0, start) + text + v.slice(end);
+        var pos = start + text.length;
+        ta.selectionStart = ta.selectionEnd = pos;
+      }
+
+      function updateCompositionView() {
+        compositionEl.textContent = composition || "（請輸入注音）";
+      }
+
+      function commitText(text) {
+        if (!text) return;
+        insertAtCaret(text);
+      }
+
+      function renderCandidates() {
+        candidatesEl.innerHTML = "";
+        var list = candidates;
+        if (!composition) {
+          imeControlsEl.style.display = "none";
+          return;
+        }
+
+        if (list.length === 0) {
+          imeControlsEl.style.display = "none";
+          var empty = document.createElement("button");
+          empty.type = "button";
+          empty.className = "cand";
+          empty.textContent = "無候選（可送出目前注音）";
+          empty.addEventListener("click", function () {
+            commitFirstCandidateOrComposition();
+          });
+          candidatesEl.appendChild(empty);
+          return;
+        }
+
+        var pageStart = 0;
+        var pageEnd = list.length;
+        if (candidatesExpanded) {
+          pageStart = expandedPage * EXPANDED_PAGE_SIZE;
+          pageEnd = Math.min(list.length, pageStart + EXPANDED_PAGE_SIZE);
+        } else {
+          pageEnd = Math.min(list.length, COLLAPSED_LIMIT);
+        }
+
+        var shown = list.slice(pageStart, pageEnd);
+        shown.forEach(function (item, i) {
+          var ch = item[0];
+          var raw = item;
+          var b = document.createElement("button");
+          b.type = "button";
+          b.className = "cand";
+          b.innerHTML = '<span class="cand-num">' + (pageStart + i + 1) + "</span>" + ch;
+          b.addEventListener("click", function () {
+            if (!ime) return;
+            ime.selectCandidate(raw);
+            composition = "";
+            candidates = [];
+            updateCompositionView();
+            renderCandidates();
+          });
+          candidatesEl.appendChild(b);
+        });
+
+        var totalPages = Math.max(1, Math.ceil(list.length / EXPANDED_PAGE_SIZE));
+        imeControlsEl.style.display = "flex";
+        btnExpandCandidatesEl.textContent = candidatesExpanded ? "收合" : "展開";
+        btnExpandCandidatesEl.style.display = list.length > COLLAPSED_LIMIT ? "inline-block" : "none";
+        btnPrevCandidatesEl.style.display = candidatesExpanded ? "inline-block" : "none";
+        btnNextCandidatesEl.style.display = candidatesExpanded ? "inline-block" : "none";
+        btnPrevCandidatesEl.disabled = !candidatesExpanded || expandedPage <= 0;
+        btnNextCandidatesEl.disabled = !candidatesExpanded || expandedPage >= totalPages - 1;
+        if (candidatesExpanded) {
+          candidatesPageInfoEl.textContent = "第 " + (expandedPage + 1) + " / " + totalPages + " 頁（每頁最多 50）";
+        } else {
+          candidatesPageInfoEl.textContent = "預覽前 " + Math.min(list.length, COLLAPSED_LIMIT) + " 個，共 " + list.length + " 個";
+        }
+      }
+
+      function appendZhuyin(ch) {
+        if (!ime) return;
+        ime.handleKey(ch);
+      }
+
+      function commitFirstCandidateOrComposition() {
+        if (!composition) return;
+        if (ime && candidates.length > 0) {
+          ime.selectCandidate(candidates[0]);
+          composition = "";
+          candidates = [];
+          updateCompositionView();
+          renderCandidates();
+          return;
+        }
+
+        // 若候選尚未到達，先將組字直接送出避免遺失
+        commitText(composition);
+        composition = "";
+        candidates = [];
+        updateCompositionView();
+        renderCandidates();
+      }
+
+      function resetCandidatePager() {
+        candidatesExpanded = false;
+        expandedPage = 0;
+      }
+
+      function base64ToArrayBuffer(base64) {
+        var binary = atob(base64);
+        var len = binary.length;
+        var bytes = new Uint8Array(len);
+        for (var i = 0; i < len; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes.buffer;
+      }
+
+      function waitForDatabaseFromHost(timeoutMs) {
+        if (pendingDbArrayBuffer) return Promise.resolve(pendingDbArrayBuffer);
+        return new Promise(function(resolve, reject) {
+          waitingDbResolver = resolve;
+          setTimeout(function() {
+            if (waitingDbResolver) {
+              waitingDbResolver = null;
+              reject(new Error("主程式未提供 jszhuyin 字庫資料"));
+            }
+          }, timeoutMs || 8000);
+        });
+      }
+
+      function setupHostDbBridge() {
+        if (!(window.chrome && window.chrome.webview)) return;
+        window.chrome.webview.addEventListener("message", function(evt) {
+          var msg = evt && evt.data;
+          if (!msg || msg.type !== "setJsZhuyinDatabase" || !msg.base64) return;
+          try {
+            pendingDbArrayBuffer = base64ToArrayBuffer(msg.base64);
+            if (waitingDbResolver) {
+              var resolver = waitingDbResolver;
+              waitingDbResolver = null;
+              resolver(pendingDbArrayBuffer);
+            }
+          } catch (err) {
+            compositionEl.textContent = "字庫解碼失敗：" + (err && err.message ? err.message : "未知錯誤");
+          }
+        });
+      }
+
+      async function initJsZhuyin() {
+        if (typeof JSZhuyin === "undefined") {
+          compositionEl.textContent = "jszhuyin 載入失敗（找不到 JSZhuyin）";
+          return;
+        }
+
+        try {
+          // 由 C# 主程式讀本機 database.data 並透過 WebMessage 傳入，避開 file:// fetch 限制
+          var dbBuffer = await waitForDatabaseFromHost(10000);
+          ime = new JSZhuyin();
+          ime.oncompositionupdate = function (c) {
+            composition = String(c || "");
+            resetCandidatePager();
+            updateCompositionView();
+          };
+          ime.oncompositionend = function (c) {
+            if (c) commitText(String(c));
+            composition = "";
+            candidates = [];
+            resetCandidatePager();
+            updateCompositionView();
+            renderCandidates();
+          };
+          ime.oncandidateschange = function (cands) {
+            candidates = Array.isArray(cands) ? cands : [];
+            if (candidatesExpanded) {
+              var maxPage = Math.max(0, Math.ceil(candidates.length / EXPANDED_PAGE_SIZE) - 1);
+              if (expandedPage > maxPage) expandedPage = maxPage;
+            }
+            renderCandidates();
+          };
+          ime.onerror = function (err) {
+            compositionEl.textContent = "jszhuyin 發生錯誤：" + (err && err.message ? err.message : "未知錯誤");
+          };
+          ime.load(dbBuffer);
+        } catch (err) {
+          compositionEl.textContent = "jszhuyin 初始化失敗：" + (err && err.message ? err.message : "未知錯誤");
+        }
+      }
+
+      rows.forEach(function (row, rowIndex) {
+        var rowEl = document.createElement("div");
+        rowEl.className = "kb-row";
+        if (rowIndex === 1 || rowIndex === 3) rowEl.classList.add("row-shift-1");
+        if (rowIndex === 2) rowEl.classList.add("row-shift-2");
+        row.forEach(function (item) {
+          var ch = typeof item === "string" ? item : item.ch;
+          var label = typeof item === "string" ? item : item.label;
+          var extraCls = typeof item === "string" ? "" : (item.cls || "");
+          var b = document.createElement("button");
+          b.type = "button";
+          b.className = "key" + (extraCls ? " " + extraCls : "");
+          b.textContent = label;
+          b.setAttribute("aria-label", label);
+          b.addEventListener("click", function () {
+            if (label === "送出") {
+              commitFirstCandidateOrComposition();
+              return;
+            }
+
+            if (ch === " ") {
+              if (composition) {
+                commitFirstCandidateOrComposition();
+              } else {
+                commitText(" ");
+              }
+              return;
+            }
+            appendZhuyin(ch);
+          });
+          rowEl.appendChild(b);
+        });
+        kb.appendChild(rowEl);
+      });
+
+      document.getElementById("btnBksp").addEventListener("click", function () {
+        if (composition) {
+          if (ime) ime.handleKey("Backspace");
+          return;
+        }
+        ta.focus();
+        var start = ta.selectionStart;
+        var end = ta.selectionEnd;
+        if (start !== end) {
+          ta.value = ta.value.slice(0, start) + ta.value.slice(end);
+          ta.selectionStart = ta.selectionEnd = start;
+          return;
+        }
+        if (start <= 0) return;
+        var v = ta.value;
+        var before = v.slice(0, start);
+        var arr = Array.from(before);
+        arr.pop();
+        ta.value = arr.join("") + v.slice(start);
+        ta.selectionStart = ta.selectionEnd = arr.join("").length;
+      });
+
+      document.getElementById("btnClear").addEventListener("click", function () {
+        composition = "";
+        updateCompositionView();
+        resetCandidatePager();
+        renderCandidates();
+        ta.value = "";
+        ta.focus();
+      });
+
+      btnExpandCandidatesEl.addEventListener("click", function () {
+        if (candidates.length <= COLLAPSED_LIMIT) return;
+        candidatesExpanded = !candidatesExpanded;
+        if (!candidatesExpanded) expandedPage = 0;
+        renderCandidates();
+      });
+
+      btnPrevCandidatesEl.addEventListener("click", function () {
+        if (!candidatesExpanded || expandedPage <= 0) return;
+        expandedPage--;
+        renderCandidates();
+      });
+
+      btnNextCandidatesEl.addEventListener("click", function () {
+        if (!candidatesExpanded) return;
+        var maxPage = Math.max(0, Math.ceil(candidates.length / EXPANDED_PAGE_SIZE) - 1);
+        if (expandedPage >= maxPage) return;
+        expandedPage++;
+        renderCandidates();
+      });
+
+      ta.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && composition) {
+          e.preventDefault();
+          commitFirstCandidateOrComposition();
+          return;
+        }
+
+        if (!composition) return;
+        var n = parseInt(e.key, 10);
+        if (!Number.isNaN(n) && n >= 1 && n <= 9) {
+          if (ime && candidates[n - 1]) {
+            e.preventDefault();
+            ime.selectCandidate(candidates[n - 1]);
+            composition = "";
+            candidates = [];
+            updateCompositionView();
+            renderCandidates();
+          }
+        }
+      });
+
+      function postToHost(payload) {
+        if (window.chrome && window.chrome.webview) {
+          window.chrome.webview.postMessage(payload);
+          return true;
+        }
+        alert(
+          "無法送交印表機：目前不是在程式內嵌的 WebView2 中執行。\n\n" +
+          "請執行 Cloud-Invoice-Carrier 主程式，並確認 .env 的 APP_MODE=name_label。"
+        );
+        return false;
+      }
+
+      document.getElementById("btnPrint").addEventListener("click", function () {
+        if (composition) {
+          commitFirstCandidateOrComposition();
+        }
+        var t = String(ta.value || "").trim();
+        if (!t) {
+          alert("請先輸入要列印的內容（中文或注音皆可）。");
+          return;
+        }
+        postToHost({ type: "tscNameLabelPrint", text: t });
+      });
+
+      updateCompositionView();
+      renderCandidates();
+      setupHostDbBridge();
+      initJsZhuyin();
+      ta.focus();
+    })();
+  </script>
+</body>
+</html>
