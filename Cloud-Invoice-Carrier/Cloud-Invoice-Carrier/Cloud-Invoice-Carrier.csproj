@@ -14,6 +14,7 @@
     <None Remove="picture\實際背景2.png" />
     <None Remove="picture\實際背景3.png" />
     <None Remove="picture\實際背景4.png" />
+    <None Remove="picture\001.jpg" />
   </ItemGroup>
 
   <ItemGroup>
@@ -21,6 +22,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="picture\001.jpg" Condition="Exists('picture\001.jpg')">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
     <EmbeddedResource Include="picture\實際背景1.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
@@ -41,6 +45,12 @@
 
   <ItemGroup>
     <None Update="載具生成器2.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="picture\titan01.jpg">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="picture\titan02.jpg">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

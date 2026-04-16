@@ -213,6 +213,47 @@
     <div class="preview-box">
       <canvas id="previewCanvas"></canvas>
     </div>
+    <p class="hint" style="margin-top:12px; margin-bottom:0; text-align:center;">列印內容</p>
+    <div class="print-options" style="margin-top:8px; display:flex; justify-content:center; gap:18px; flex-wrap:wrap;">
+      <label style="display:flex; align-items:center; gap:8px; font-size:16px; cursor:pointer; user-select:none;">
+        <input type="radio" name="printWhat" value="carrier" checked />
+        列印載具（合成圖）
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:16px; cursor:pointer; user-select:none;">
+        <input type="radio" name="printWhat" value="img001" />
+        列印 001.jpg
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:16px; cursor:pointer; user-select:none;">
+        <input type="radio" name="printWhat" value="giant0102" />
+        列印 titan01 / titan02（雙面）
+      </label>
+    </div>
+    <p class="hint" style="margin-top:10px; margin-bottom:0; text-align:center;">列印方式</p>
+    <div class="print-options" style="margin-top:8px; display:flex; justify-content:center; gap:18px; flex-wrap:wrap;">
+      <label style="display:flex; align-items:center; gap:8px; font-size:16px; cursor:pointer; user-select:none;">
+        <input type="radio" name="printDuplex" value="simplex" checked />
+        單面列印
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:16px; cursor:pointer; user-select:none;">
+        <input type="radio" name="printDuplex" value="duplex" />
+        雙面列印
+      </label>
+    </div>
+    <p class="hint" style="margin-top:10px; margin-bottom:0; text-align:center;">雙面翻面補償（各樣式／001 各別記憶；不會改印表機橫向紙張）</p>
+    <div class="print-options" style="margin-top:8px; display:flex; justify-content:center; gap:14px; flex-wrap:wrap;">
+      <label style="display:flex; align-items:center; gap:8px; font-size:15px; cursor:pointer; user-select:none;">
+        <input type="radio" name="printLandscapeAnnot" value="auto" checked />
+        自動
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:15px; cursor:pointer; user-select:none;">
+        <input type="radio" name="printLandscapeAnnot" value="landscape" />
+        橫版
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:15px; cursor:pointer; user-select:none;">
+        <input type="radio" name="printLandscapeAnnot" value="portrait" />
+        直版
+      </label>
+    </div>
     <div class="buttons-row">
       <button type="button" id="btnBack">重選</button>
       <button type="button" id="btnPrint">列印</button>
@@ -231,6 +272,7 @@
     window.__CARRIER_BACKGROUND_DATA_URL__ = null;
     window.__CARRIER_BACKGROUND_URLS__ = null;
     window.__CARRIER_ACTUAL_BACKGROUND_URLS__ = null;
+    window.__TITAN_BACKGROUND_URLS__ = null;
     if (window.chrome && window.chrome.webview) {
       window.chrome.webview.addEventListener("message", function(e) {
         var d = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
@@ -247,10 +289,35 @@
         if (d.type === "setActualBackgroundImages" && Array.isArray(d.dataUrls)) {
           window.__CARRIER_ACTUAL_BACKGROUND_URLS__ = d.dataUrls;
         }
+        if (d.type === "setTitanBackgroundImages" && Array.isArray(d.dataUrls)) {
+          window.__TITAN_BACKGROUND_URLS__ = d.dataUrls;
+        }
       });
     }
 
     let selectedTemplate = 1;
+    /** 樣式 1～4 與 001 列印各自儲存：'auto'|'landscape'|'portrait' */
+    const printLandscapeByTemplate = { 1: "auto", 2: "auto", 3: "auto", 4: "auto", img001: "auto", giant0102: "auto" };
+    /** 目前畫面上「圖檔方向」對應的儲存鍵：1～4 或 'img001' 或 'giant0102' */
+    let activeLandscapeStorageKey = 1;
+
+    function flushLandscapeToStorageKey(key) {
+      const el = document.querySelector('input[name="printLandscapeAnnot"]:checked');
+      if (el) printLandscapeByTemplate[key] = el.value;
+    }
+
+    function syncLandscapeUIFromKey(key) {
+      const v = printLandscapeByTemplate[key] || "auto";
+      document.querySelectorAll('input[name="printLandscapeAnnot"]').forEach(function(r) {
+        r.checked = r.value === v;
+      });
+    }
+
+    function setLandscapeContext(newKey) {
+      flushLandscapeToStorageKey(activeLandscapeStorageKey);
+      activeLandscapeStorageKey = newKey;
+      syncLandscapeUIFromKey(activeLandscapeStorageKey);
+    }
 
     // 手機條碼載具：總長 8（/ + 7）
     const MAX_LEN = 8;
@@ -319,6 +386,47 @@
       return getActualBackgroundUrlForTemplate(selectedTemplate);
     }
 
+    function getTitanBackgroundUrl(idx) {
+      var urls = window.__TITAN_BACKGROUND_URLS__;
+      if (urls && urls[idx - 1]) return urls[idx - 1];
+      return idx === 1 ? toAbsoluteAssetUrl("picture/titan01.jpg") : toAbsoluteAssetUrl("picture/titan02.jpg");
+    }
+
+    function toAbsoluteAssetUrl(relativePath) {
+      var base = location.href.substring(0, location.href.lastIndexOf("/") + 1);
+      var normalized = String(relativePath || "").replace(/\\/g, "/").replace(/^\/+/, "");
+      var encoded = normalized
+        .split("/")
+        .map(function(seg) { return encodeURIComponent(seg); })
+        .join("/");
+      return base + encoded;
+    }
+
+    function normalizeBackgroundInput(urlOrRelativePath) {
+      var v = String(urlOrRelativePath || "");
+      if (v.startsWith("data:")) return v;
+      return toAbsoluteAssetUrl(v);
+    }
+
+    /**
+     * 僅用於下載／列印：合成圖若為橫向（寬>高），順時針轉 90°，使像素為高>寬（成品預覽不經此函式）。
+     * @param {HTMLCanvasElement} source
+     * @returns {HTMLCanvasElement}
+     */
+    function rotateComposite90IfWiderThanTall(source) {
+      var w = source.width;
+      var h = source.height;
+      if (w <= h) return source;
+      var out = document.createElement("canvas");
+      out.width = h;
+      out.height = w;
+      var o = out.getContext("2d");
+      o.translate(h, 0);
+      o.rotate(Math.PI / 2);
+      o.drawImage(source, 0, 0);
+      return out;
+    }
+
     function renderPreview(templateIndex) {
       var svg = document.querySelector("#barcode");
       if (!svg || !svg.outerHTML || svg.innerHTML.trim() === "") return;
@@ -347,14 +455,39 @@
         var baseHeight = loadedBarcode.height * baseScale;
         var targetWidth = baseWidth + 346;
         var targetHeight = baseHeight + 77;
-        ctx.drawImage(loadedBarcode, 105, 102, targetWidth, targetHeight);
+        ctx.drawImage(loadedBarcode, 102, 409, targetWidth, targetHeight);
       }).catch(function(err) {
         alert("背景圖片載入失敗，無法產生預覽。");
         console.error(err);
       });
     }
 
-    function downloadWithBackground(filename = "carrier-with-background.png") {
+    /** 將列印資料送給 WinForms（WebView2）；若在瀏覽器開 HTML 則無法列印到 HiTi。 */
+    /** @returns {boolean|undefined} true=橫版 false=直版 undefined=自動（不傳 isLandscape） */
+    function getIsLandscapeAnnotation() {
+      flushLandscapeToStorageKey(activeLandscapeStorageKey);
+      const v = printLandscapeByTemplate[activeLandscapeStorageKey] || "auto";
+      if (v === "landscape") return true;
+      if (v === "portrait") return false;
+      return undefined;
+    }
+
+    function postCarrierImageToHost(payload) {
+      const ann = getIsLandscapeAnnotation();
+      if (ann !== undefined) payload.isLandscape = ann;
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage(payload);
+        return true;
+      }
+      alert(
+        "無法送交印表機：目前不是在程式內嵌的 WebView2 中執行。\n\n" +
+        "請關閉瀏覽器分頁，改為執行「Cloud-Invoice-Carrier」主程式，\n" +
+        "在程式視窗內按列印，才會送到 HiTi CS-200e。"
+      );
+      return false;
+    }
+
+    function downloadWithBackground(filename = "carrier-with-background.png", duplex = false) {
       const svg = document.querySelector("#barcode");
       if (!svg || !svg.outerHTML || svg.innerHTML.trim() === "") return false;
 
@@ -385,21 +518,22 @@
         const baseHeight = loadedBarcode.height * baseScale;
         const targetWidth = baseWidth ;
         const targetHeight = baseHeight ;
-        const x = 199;
-        const y = 142;
+        const x = 104;
+        const y = 419;
 
         ctx.drawImage(loadedBarcode, x, y, targetWidth, targetHeight);
 
-        const dataUrl = canvas.toDataURL("image/png");
-        if (window.chrome && window.chrome.webview) {
-          window.chrome.webview.postMessage({
-            type: "carrierImage",
-            fileName: filename,
-            dataUrl: dataUrl
-          });
-        }
+        var outCanvas = rotateComposite90IfWiderThanTall(canvas);
 
-        canvas.toBlob(function(blob) {
+        const dataUrl = outCanvas.toDataURL("image/png");
+        postCarrierImageToHost({
+          type: "carrierImage",
+          fileName: filename,
+          dataUrl: dataUrl,
+          duplex: duplex
+        });
+
+        outCanvas.toBlob(function(blob) {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
@@ -416,6 +550,84 @@
       });
 
       return true;
+    }
+
+    function composeCarrierCanvas(backgroundUrl, loadedBarcode) {
+      return new Promise(function(resolve, reject) {
+        const bgImg = new Image();
+        bgImg.onload = function() {
+          const canvas = document.createElement("canvas");
+          canvas.width = bgImg.width;
+          canvas.height = bgImg.height;
+          const ctx = canvas.getContext("2d");
+
+          ctx.drawImage(bgImg, 0, 0, bgImg.width, bgImg.height);
+
+          const baseWidth = bgImg.width * 0.6;
+          const baseScale = baseWidth / loadedBarcode.width;
+          const baseHeight = loadedBarcode.height * baseScale;
+          const targetWidth = baseWidth;
+          const targetHeight = baseHeight;
+          const x = 416;
+          const y = 88;
+
+          ctx.drawImage(loadedBarcode, x, y, targetWidth, targetHeight);
+          resolve(rotateComposite90IfWiderThanTall(canvas));
+        };
+        bgImg.onerror = function() { reject(new Error("bg load fail")); };
+        bgImg.src = backgroundUrl;
+      });
+    }
+
+    function printDuplexCompositeImages(frontBackgroundUrl, backBackgroundUrl, fileName = "carrier-duplex.png") {
+      const svg = document.querySelector("#barcode");
+      if (!svg || !svg.outerHTML || svg.innerHTML.trim() === "") return false;
+
+      const barcodeImg = new Image();
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const svgUrl = URL.createObjectURL(svgBlob);
+
+      Promise.all([
+        new Promise(function(resolve, reject) {
+          barcodeImg.onload = function() { resolve(barcodeImg); };
+          barcodeImg.onerror = function() { reject(new Error("barcode load fail")); };
+          barcodeImg.src = svgUrl;
+        })
+      ]).then(function(imgs) {
+        const loadedBarcode = imgs[0];
+        return Promise.all([
+          composeCarrierCanvas(normalizeBackgroundInput(frontBackgroundUrl), loadedBarcode),
+          composeCarrierCanvas(normalizeBackgroundInput(backBackgroundUrl), loadedBarcode)
+        ]);
+      }).then(function(canvases) {
+        const frontCanvas = canvases[0];
+        const backCanvas = canvases[1];
+
+        postCarrierImageToHost({
+          type: "carrierImage",
+          fileName: fileName,
+          dataUrl: frontCanvas.toDataURL("image/png"),
+          dataUrlBack: backCanvas.toDataURL("image/png"),
+          duplex: true
+        });
+      }).catch(function(err) {
+        alert("背景圖片載入失敗，無法下載或列印。\n" + (err && err.message ? err.message : ""));
+        console.error(err);
+      });
+
+      return true;
+    }
+
+    /** 列印本機圖檔：改由 C# 讀取磁碟檔，避免 WebView2 用 file:// 載圖後 canvas 被污染而無法 toDataURL。 */
+    function printRawImage(relativePath, fileName = "001.jpg", duplex = false, relativePathBack) {
+      postCarrierImageToHost({
+        type: "printLocalImageFile",
+        relativePath: relativePath,
+        relativePathBack: relativePathBack,
+        fileName: fileName,
+        duplex: duplex
+      });
     }
 
     // 產生條碼：成功回傳 true、失敗回傳 false
@@ -470,6 +682,8 @@
             document.getElementById("step1").style.display = "none";
             document.getElementById("step2").style.display = "block";
             selectedTemplate = 1;
+            activeLandscapeStorageKey = 1;
+            syncLandscapeUIFromKey(1);
             document.querySelectorAll(".card-option").forEach(function(el) {
               el.classList.toggle("selected", el.getAttribute("data-template") === "1");
             });
@@ -498,11 +712,33 @@
 
     document.querySelectorAll(".card-option").forEach(function(el) {
       el.addEventListener("click", function() {
-        selectedTemplate = parseInt(el.getAttribute("data-template") || "1", 10);
+        const t = parseInt(el.getAttribute("data-template") || "1", 10);
+        const what = document.querySelector('input[name="printWhat"]:checked')?.value || "carrier";
+        if (what !== "img001" && what !== "giant0102") setLandscapeContext(t);
+        selectedTemplate = t;
         document.querySelectorAll(".card-option").forEach(function(x) {
           x.classList.toggle("selected", x === el);
         });
         renderPreview(selectedTemplate);
+      });
+    });
+
+    document.querySelectorAll('input[name="printLandscapeAnnot"]').forEach(function(r) {
+      r.addEventListener("change", function() {
+        if (this.checked) printLandscapeByTemplate[activeLandscapeStorageKey] = this.value;
+      });
+    });
+
+    document.querySelectorAll('input[name="printWhat"]').forEach(function(r) {
+      r.addEventListener("change", function() {
+        if (!this.checked) return;
+        flushLandscapeToStorageKey(activeLandscapeStorageKey);
+        if (this.value === "img001" || this.value === "giant0102") {
+          activeLandscapeStorageKey = this.value;
+        } else {
+          activeLandscapeStorageKey = selectedTemplate;
+        }
+        syncLandscapeUIFromKey(activeLandscapeStorageKey);
       });
     });
 
@@ -512,7 +748,15 @@
     });
 
     document.getElementById("btnPrint").addEventListener("click", function() {
-      downloadWithBackground("carrier-with-background.png");
+      const duplex = (document.querySelector('input[name="printDuplex"]:checked')?.value === "duplex");
+      const what = document.querySelector('input[name="printWhat"]:checked')?.value || "carrier";
+      if (what === "img001") {
+        printRawImage("picture/001.jpg", "001.jpg", duplex);
+      } else if (what === "giant0102") {
+        printDuplexCompositeImages(getTitanBackgroundUrl(1), getTitanBackgroundUrl(2), "titan01-02-合成圖.png");
+      } else {
+        downloadWithBackground("carrier-with-background.png", duplex);
+      }
     });
 
     inputEl.focus();
