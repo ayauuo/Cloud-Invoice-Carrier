@@ -59,6 +59,26 @@
       letter-spacing: 2px;
       opacity: 0.9;
     }
+    .kbd-modes {
+      margin: 8px 0 10px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .kbd-mode-btn {
+      border: 1px solid rgba(255,255,255,0.14);
+      background: #2a2d33;
+      color: #fff;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .kbd-mode-btn.active {
+      background: #c62828;
+      border-color: rgba(255,255,255,0.35);
+      font-weight: 700;
+    }
     .ime-box {
       margin-top: 12px;
       border-radius: 14px;
@@ -179,6 +199,27 @@
       gap: 10px;
       justify-content: center;
     }
+    .font-picker {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+    }
+    .font-picker label {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    .font-picker select {
+      min-width: 220px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: #202225;
+      color: #fff;
+      font-size: 14px;
+    }
     .row-actions button {
       min-width: 120px;
       padding: 12px 16px;
@@ -215,7 +256,24 @@
     </div>
 
     <div class="kbd-title" id="kbdLabel">注音鍵盤（含候選字）</div>
+    <div class="kbd-modes" role="group" aria-label="鍵盤模式切換">
+      <button type="button" class="kbd-mode-btn active" data-mode="zhuyin">注音</button>
+      <button type="button" class="kbd-mode-btn" data-mode="english">英文</button>
+      <button type="button" class="kbd-mode-btn" data-mode="number">數字</button>
+    </div>
     <div class="kb" id="keyboard" role="group" aria-labelledby="kbdLabel"></div>
+
+    <div class="font-picker">
+      <label for="fontSelect">列印字型</label>
+      <select id="fontSelect" aria-label="列印字型選擇">
+        <option value="Microsoft JhengHei">微軟正黑體（Microsoft JhengHei）</option>
+        <option value="MingLiU">新細明體（MingLiU）</option>
+        <option value="PMingLiU">細明體（PMingLiU）</option>
+        <option value="DFKai-SB">標楷體（DFKai-SB）</option>
+        <option value="KaiTi">楷體（KaiTi）</option>
+        <option value="SimSun">宋體（SimSun）</option>
+      </select>
+    </div>
 
     <div class="row-actions">
       <button type="button" id="btnBksp">退格</button>
@@ -242,6 +300,9 @@
       var btnPrevCandidatesEl = document.getElementById("btnPrevCandidates");
       var btnNextCandidatesEl = document.getElementById("btnNextCandidates");
       var candidatesPageInfoEl = document.getElementById("candidatesPageInfo");
+      var fontSelectEl = document.getElementById("fontSelect");
+      var imeBoxEl = document.querySelector(".ime-box");
+      var modeButtons = Array.prototype.slice.call(document.querySelectorAll(".kbd-mode-btn"));
       var composition = "";
       var ime = null;
       var candidates = [];
@@ -252,14 +313,45 @@
       var COLLAPSED_LIMIT = 10;
       var EXPANDED_PAGE_SIZE = 50;
 
-      // 手機感注音盤：四列主鍵 + 一列功能鍵
-      var rows = [
-        ["ㄅ", "ㄉ", "ˇ", "ˋ", "ㄓ", "ˊ", "˙", "ㄚ", "ㄞ", "ㄢ"],
-        ["ㄆ", "ㄊ", "ㄍ", "ㄐ", "ㄔ", "ㄗ", "ㄧ", "ㄛ", "ㄟ", "ㄣ"],
-        ["ㄇ", "ㄋ", "ㄎ", "ㄑ", "ㄕ", "ㄘ", "ㄨ", "ㄜ", "ㄠ", "ㄤ"],
-        ["ㄈ", "ㄌ", "ㄏ", "ㄒ", "ㄖ", "ㄙ", "ㄩ", "ㄝ", "ㄡ", "ㄥ"],
-        [{ label: "送出", ch: " ", cls: "key-action" }, { label: "空白", ch: " ", cls: "key-wide" }]
-      ];
+      var keyboardMode = "zhuyin";
+      var rowsByMode = {
+        zhuyin: [
+          ["ㄅ", "ㄉ", "ˇ", "ˋ", "ㄓ", "ˊ", "˙", "ㄚ", "ㄞ", "ㄢ"],
+          ["ㄆ", "ㄊ", "ㄍ", "ㄐ", "ㄔ", "ㄗ", "ㄧ", "ㄛ", "ㄟ", "ㄣ"],
+          ["ㄇ", "ㄋ", "ㄎ", "ㄑ", "ㄕ", "ㄘ", "ㄨ", "ㄜ", "ㄠ", "ㄤ"],
+          ["ㄈ", "ㄌ", "ㄏ", "ㄒ", "ㄖ", "ㄙ", "ㄩ", "ㄝ", "ㄡ", "ㄥ"],
+          ["ㄦ", { label: "送出", ch: " ", cls: "key-action" }, { label: "空白", ch: " ", cls: "key-wide" }]
+        ],
+        english: [
+          ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+          ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+          ["Z", "X", "C", "V", "B", "N", "M"],
+          [{ label: "空白", ch: " ", cls: "key-wide" }]
+        ],
+        number: [
+          ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+          ["-", "/", ":", ";", "(", ")", "$", "&", "@", "\""],
+          [".", ",", "?", "!", "'", "+", "=", "#", "%", "*"],
+          [{ label: "空白", ch: " ", cls: "key-wide" }]
+        ]
+      };
+
+      function updateModeUi() {
+        modeButtons.forEach(function(btn) {
+          var isActive = btn.getAttribute("data-mode") === keyboardMode;
+          btn.classList.toggle("active", isActive);
+        });
+        if (keyboardMode === "zhuyin") {
+          kbdLabel.textContent = "注音鍵盤（含候選字）";
+          imeBoxEl.style.display = "";
+        } else if (keyboardMode === "english") {
+          kbdLabel.textContent = "英文鍵盤";
+          imeBoxEl.style.display = "none";
+        } else {
+          kbdLabel.textContent = "數字與符號鍵盤";
+          imeBoxEl.style.display = "none";
+        }
+      }
 
 
       function insertAtCaret(text) {
@@ -455,39 +547,64 @@
         }
       }
 
-      rows.forEach(function (row, rowIndex) {
-        var rowEl = document.createElement("div");
-        rowEl.className = "kb-row";
-        if (rowIndex === 1 || rowIndex === 3) rowEl.classList.add("row-shift-1");
-        if (rowIndex === 2) rowEl.classList.add("row-shift-2");
-        row.forEach(function (item) {
-          var ch = typeof item === "string" ? item : item.ch;
-          var label = typeof item === "string" ? item : item.label;
-          var extraCls = typeof item === "string" ? "" : (item.cls || "");
-          var b = document.createElement("button");
-          b.type = "button";
-          b.className = "key" + (extraCls ? " " + extraCls : "");
-          b.textContent = label;
-          b.setAttribute("aria-label", label);
-          b.addEventListener("click", function () {
-            if (label === "送出") {
-              commitFirstCandidateOrComposition();
-              return;
-            }
-
-            if (ch === " ") {
-              if (composition) {
+      function renderKeyboard() {
+        kb.innerHTML = "";
+        var rows = rowsByMode[keyboardMode] || rowsByMode.zhuyin;
+        rows.forEach(function (row, rowIndex) {
+          var rowEl = document.createElement("div");
+          rowEl.className = "kb-row";
+          if (keyboardMode === "zhuyin") {
+            if (rowIndex === 1 || rowIndex === 3) rowEl.classList.add("row-shift-1");
+            if (rowIndex === 2) rowEl.classList.add("row-shift-2");
+          }
+          row.forEach(function (item) {
+            var ch = typeof item === "string" ? item : item.ch;
+            var label = typeof item === "string" ? item : item.label;
+            var extraCls = typeof item === "string" ? "" : (item.cls || "");
+            var b = document.createElement("button");
+            b.type = "button";
+            b.className = "key" + (extraCls ? " " + extraCls : "");
+            b.textContent = label;
+            b.setAttribute("aria-label", label);
+            b.addEventListener("click", function () {
+              if (label === "送出") {
                 commitFirstCandidateOrComposition();
-              } else {
-                commitText(" ");
+                return;
               }
-              return;
-            }
-            appendZhuyin(ch);
+
+              if (ch === " ") {
+                if (keyboardMode === "zhuyin" && composition) {
+                  commitFirstCandidateOrComposition();
+                } else {
+                  commitText(" ");
+                }
+                return;
+              }
+
+              if (keyboardMode === "zhuyin") {
+                appendZhuyin(ch);
+              } else {
+                commitText(ch);
+              }
+            });
+            rowEl.appendChild(b);
           });
-          rowEl.appendChild(b);
+          kb.appendChild(rowEl);
         });
-        kb.appendChild(rowEl);
+      }
+
+      modeButtons.forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          var nextMode = btn.getAttribute("data-mode");
+          if (!nextMode || nextMode === keyboardMode) return;
+          if (keyboardMode === "zhuyin" && composition) {
+            commitFirstCandidateOrComposition();
+          }
+          keyboardMode = nextMode;
+          updateModeUi();
+          renderKeyboard();
+          ta.focus();
+        });
       });
 
       document.getElementById("btnBksp").addEventListener("click", function () {
@@ -575,6 +692,26 @@
         return false;
       }
 
+      var FONT_STORAGE_KEY = "nameLabelFontFamily";
+      function applyInputPreviewFont(fontFamily) {
+        if (!fontFamily) return;
+        ta.style.fontFamily = '"' + fontFamily + '", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
+      }
+
+      var savedFontFamily = localStorage.getItem(FONT_STORAGE_KEY);
+      if (savedFontFamily) {
+        var found = Array.prototype.some.call(fontSelectEl.options, function(opt) {
+          return opt.value === savedFontFamily;
+        });
+        if (found) fontSelectEl.value = savedFontFamily;
+      }
+      applyInputPreviewFont(fontSelectEl.value);
+
+      fontSelectEl.addEventListener("change", function () {
+        localStorage.setItem(FONT_STORAGE_KEY, fontSelectEl.value);
+        applyInputPreviewFont(fontSelectEl.value);
+      });
+
       document.getElementById("btnPrint").addEventListener("click", function () {
         if (composition) {
           commitFirstCandidateOrComposition();
@@ -584,11 +721,13 @@
           alert("請先輸入要列印的內容（中文或注音皆可）。");
           return;
         }
-        postToHost({ type: "tscNameLabelPrint", text: t });
+        postToHost({ type: "tscNameLabelPrint", text: t, fontFamily: fontSelectEl.value });
       });
 
       updateCompositionView();
       renderCandidates();
+      updateModeUi();
+      renderKeyboard();
       setupHostDbBridge();
       initJsZhuyin();
       ta.focus();

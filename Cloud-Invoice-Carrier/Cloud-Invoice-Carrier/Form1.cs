@@ -145,6 +145,8 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
             public string? type { get; set; }
             /// <summary>姓名貼模式：要列印的中文字（送 TSC TSPL）。</summary>
             public string? text { get; set; }
+            /// <summary>姓名貼模式：本次 BITMAP 渲染要使用的 Windows 字型家族名稱。</summary>
+            public string? fontFamily { get; set; }
             public string? fileName { get; set; }
             public string? dataUrl { get; set; }
             public string? dataUrlBack { get; set; }
@@ -222,13 +224,41 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
 
                     try
                     {
+                        var fontFamily = string.IsNullOrWhiteSpace(msg.fontFamily)
+                            ? AppEnvConfig.NameLabelBitmapFontFamily
+                            : msg.fontFamily.Trim();
                         TscTsplNameStickerPrinter.Print(
                             t,
                             AppEnvConfig.TscWindowsPrinterName,
                             AppEnvConfig.TscDpi,
                             AppEnvConfig.LabelWidthMm,
                             AppEnvConfig.LabelHeightMm,
-                            AppEnvConfig.LabelGapMm);
+                            AppEnvConfig.LabelGapMm,
+                            AppEnvConfig.NameLabelColumns,
+                            AppEnvConfig.NameLabelRows,
+                            AppEnvConfig.NameLabelColumnGapMm,
+                            AppEnvConfig.NameLabelRowGapMm,
+                            AppEnvConfig.NameLabelGridHeightMm,
+                            AppEnvConfig.NameLabelLayoutScale,
+                            AppEnvConfig.NameLabelCharSpacingPx,
+                            AppEnvConfig.NameLabelFirstColumnOffsetXPx,
+                            AppEnvConfig.NameLabelColumnOffsetsXPx,
+                            AppEnvConfig.NameLabelMode,
+                            AppEnvConfig.NameLabelTsplFont,
+                            fontFamily,
+                            AppEnvConfig.NameLabelRotate180,
+                            AppEnvConfig.TscSpeed,
+                            AppEnvConfig.TscDensity,
+                            AppEnvConfig.TscCodePage,
+                            AppEnvConfig.TscCharSet,
+                            AppEnvConfig.BitmapThreshold,
+                            AppEnvConfig.BitmapBoldPx,
+                            AppEnvConfig.DebugSaveBitmap,
+                            AppEnvConfig.DebugBitmapPath,
+                            AppEnvConfig.TscCutAfterPrint,
+                            AppEnvConfig.TscPaperSensorMode,
+                            AppEnvConfig.TscBlackMarkMm,
+                            AppEnvConfig.TscBlackMarkPostFeedSteps);
                     }
                     catch (Exception ex)
                     {
@@ -394,6 +424,7 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
             if (!pd.PrinterSettings.IsValid)
             {
                 MessageBox.Show("找不到印表機 HiTi CS-200e，請確認名稱是否正確。");
+                AppendPrintDebug("Printer invalid: HiTi CS-200e");
                 return;
             }
 
@@ -411,15 +442,36 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
             // 依使用者選擇設定雙面列印（HiTi 僅短邊翻面；符合 duplexRotateBack180 時第 2 頁送記憶體旋轉 180°）
             if (duplex)
             {
-                if (pd.PrinterSettings.CanDuplex)
-                    pd.PrinterSettings.Duplex = Duplex.Horizontal;
-                else
-                    pd.PrinterSettings.Duplex = Duplex.Simplex; // 若印表機不支援雙面，退回單面
+                // 使用者明確要求雙面時，不允許退回單面避免誤印兩張單面。
+                if (!pd.PrinterSettings.CanDuplex)
+                {
+                    AppendPrintDebug(
+                        $"duplex requested=true, canDuplex=false, printer={pd.PrinterSettings.PrinterName}, appStart={Application.StartupPath}");
+                    MessageBox.Show(
+                        "目前印表機或驅動未回報雙面能力，已取消列印。\n\n請確認：\n1) 使用正確的 HiTi CS-200e 印表機佇列\n2) 已安裝/啟用雙面模組與對應驅動\n3) Windows 印表機內容中的雙面選項可用",
+                        "雙面列印不可用",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+
+                pd.PrinterSettings.Duplex = Duplex.Horizontal;
             }
             else
             {
                 pd.PrinterSettings.Duplex = Duplex.Simplex;
             }
+
+            AppendPrintDebug(
+                $"before print: duplexRequested={duplex}, canDuplex={pd.PrinterSettings.CanDuplex}, printer={pd.PrinterSettings.PrinterName}, printerDuplex={pd.PrinterSettings.Duplex}, defaultDuplex={pd.DefaultPageSettings.PrinterSettings.Duplex}, totalPages={(duplex ? 2 : 1)}");
+
+            // 部分驅動會在逐頁送印前覆蓋頁面設定，這裡在每頁前再強制一次雙面/單面。
+            pd.QueryPageSettings += (s, e) =>
+            {
+                e.PageSettings.PrinterSettings.Duplex = duplex ? Duplex.Horizontal : Duplex.Simplex;
+                AppendPrintDebug(
+                    $"query page settings: duplexRequested={duplex}, effectiveDuplex={e.PageSettings.PrinterSettings.Duplex}");
+            };
 
             // 使用者選雙面時一律送兩頁（翻面模組／驅動常靠第二頁觸發）。
             var pageNumber = 1;
@@ -456,9 +508,11 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
             try
             {
                 pd.Print();
+                AppendPrintDebug("print completed without exception");
             }
             catch (Exception ex)
             {
+                AppendPrintDebug("print exception: " + ex.Message);
                 MessageBox.Show(
                     "送印至 HiTi CS-200e 時發生錯誤：\n" + ex.Message,
                     "列印失敗",
@@ -469,6 +523,21 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
             {
                 backImg?.Dispose();
                 backMs?.Dispose();
+            }
+        }
+
+        private static void AppendPrintDebug(string message)
+        {
+            try
+            {
+                var folder = @"C:\test";
+                Directory.CreateDirectory(folder);
+                var line = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {message}{Environment.NewLine}";
+                File.AppendAllText(Path.Combine(folder, "print-debug.log"), line);
+            }
+            catch
+            {
+                // 除錯紀錄失敗不可中斷列印流程。
             }
         }
 

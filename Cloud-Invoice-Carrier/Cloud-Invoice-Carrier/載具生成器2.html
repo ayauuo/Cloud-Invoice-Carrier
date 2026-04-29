@@ -225,10 +225,10 @@
   <div id="step1" class="panel">
     <h1 class="title">輸入載具號碼 → 產生載具</h1>
     <p class="hint">
-      載具為 8 碼，開頭「/」，後面 7 碼（可用 A-Z、0-9、+、-、.）
+      載具為 8 碼，開頭「/」，後面 7 碼（可用 A-Z、0-9、+、-、.）。USB 條碼掃描器請設為鍵盤模式（HID），掃描時即便焦點在螢幕鍵盤上，讀到的內容也會寫入下方欄位。
     </p>
 
-    <input id="input" placeholder="/JNXJ3S0（或輸入 7 碼：JNXJ3S0）" autocomplete="off" inputmode="none" />
+    <input id="input" placeholder="/JNXJ3S0（或輸入 7 碼：JNXJ3S0）" autocomplete="off" spellcheck="false" inputmode="text" />
 
     <div id="err" class="err"></div>
 
@@ -396,6 +396,57 @@
       // / + 7 碼（A-Z 0-9 + - .）
       return /^\/[A-Z0-9+\-\.]{7}$/.test(v);
     }
+
+    function isStep1Visible() {
+      var step1 = document.getElementById("step1");
+      return step1 && step1.style.display !== "none";
+    }
+
+    /** 確保載具欄位取得鍵盤／掃描器輸入，並與螢幕鍵盤同步 */
+    function focusCarrierInput() {
+      inputEl.focus();
+      keyboard.setInput(normalize(inputEl.value));
+    }
+
+    /**
+     * USB 掃描器（鍵盤楔入）在焦點落在螢幕鍵盤按鈕等元素時，字元不會進入輸入框。
+     * 於第一步用 capture 階段接收可列印字元與 Enter，強制寫入 #input。
+     */
+    document.addEventListener(
+      "keydown",
+      function(e) {
+        if (!isStep1Visible()) return;
+        if (e.ctrlKey || e.altKey || e.metaKey) return;
+        if (e.target === inputEl) return;
+
+        var key = e.key;
+        if (key === "Enter") {
+          e.preventDefault();
+          focusCarrierInput();
+          generate();
+          return;
+        }
+
+        if (key === "Backspace") {
+          e.preventDefault();
+          focusCarrierInput();
+          var cut = normalize(inputEl.value.slice(0, -1));
+          inputEl.value = cut;
+          keyboard.setInput(cut);
+          return;
+        }
+
+        if (key.length === 1 && /[A-Za-z0-9+\-\.\/]/.test(key)) {
+          e.preventDefault();
+          focusCarrierInput();
+          var next = normalize(inputEl.value + key);
+          inputEl.value = next;
+          keyboard.setInput(next);
+          clearErr();
+        }
+      },
+      true
+    );
 
     function renderBarcode(carrier) {
       const svg = document.querySelector("#barcode");
@@ -805,6 +856,7 @@
           inputEl.value = "";
           clearErr();
           document.querySelector("#barcode").innerHTML = "";
+          focusCarrierInput();
         }
       }
     });
@@ -813,6 +865,13 @@
       const fixed = normalize(e.target.value);
       if (fixed !== e.target.value) e.target.value = fixed;
       keyboard.setInput(fixed);
+    });
+
+    inputEl.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        generate();
+      }
     });
 
     inputEl.addEventListener("focus", function() {
@@ -856,6 +915,7 @@
       document.getElementById("step2").style.display = "none";
       document.getElementById("step1").style.display = "block";
       setPreviewCardSide(false);
+      focusCarrierInput();
     });
 
     document.getElementById("btnPrint").addEventListener("click", function() {
@@ -871,7 +931,7 @@
     });
 
     initPreviewCardInteractions();
-    inputEl.focus();
+    focusCarrierInput();
   </script>
 </body>
 </html>
