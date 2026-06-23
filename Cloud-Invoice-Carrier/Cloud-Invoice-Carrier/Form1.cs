@@ -6,6 +6,8 @@ using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 
@@ -13,130 +15,259 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
 {
     public partial class Form1 : Form
     {
+        private const string AppVirtualHost = "app.local";
+
         private static readonly JsonSerializerOptions WebMessageJsonOptions = new()
         {
             PropertyNameCaseInsensitive = true
         };
 
+        private static readonly JsonSerializerOptions CarrierLayoutJsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true,
+            ReadCommentHandling = JsonCommentHandling.Skip,
+            AllowTrailingCommas = true
+        };
+
+        private sealed class CarrierLayoutConfigFile
+        {
+            [JsonPropertyName("version")]
+            public int Version { get; set; }
+
+            /// <summary>雙面翻面補償預設：auto / landscape / portrait。</summary>
+            [JsonPropertyName("defaultDuplexFlipCompensation")]
+            public string? DefaultDuplexFlipCompensation { get; set; }
+
+            /// <summary>列印方式預設：simplex / duplex。</summary>
+            [JsonPropertyName("defaultPrintDuplex")]
+            public string? DefaultPrintDuplex { get; set; }
+
+            [JsonPropertyName("templates")]
+            public Dictionary<string, CarrierTemplateFile>? Templates { get; set; }
+        }
+
+        private sealed class CarrierTemplateFile
+        {
+            [JsonPropertyName("front")]
+            public CarrierSideFile? Front { get; set; }
+
+            [JsonPropertyName("back")]
+            public CarrierSideFile? Back { get; set; }
+        }
+
+        private sealed class CarrierSideFile
+        {
+            [JsonPropertyName("previewBarcodeX")]
+            public int? PreviewBarcodeX { get; set; }
+
+            [JsonPropertyName("previewBarcodeY")]
+            public int? PreviewBarcodeY { get; set; }
+
+            [JsonPropertyName("printBarcodeX")]
+            public int? PrintBarcodeX { get; set; }
+
+            [JsonPropertyName("printBarcodeY")]
+            public int? PrintBarcodeY { get; set; }
+        }
+
         public Form1()
         {
             InitializeComponent();
+            AppEnvConfig.Load(AppPaths.ExeDirectory);
+            if (AppEnvConfig.KioskEnabled)
+                ApplyKioskMode();
+            else
+                ApplyNormalWindowMode();
             InitWebViewAsync();
         }
 
         private async void InitWebViewAsync()
         {
             await webView21.EnsureCoreWebView2Async(null);
+            await ConfigureWebViewZoomLockAsync(webView21.CoreWebView2);
+            if (AppEnvConfig.KioskEnabled)
+                await ConfigureWebViewKioskAsync(webView21.CoreWebView2);
 
-            AppEnvConfig.Load(Application.StartupPath);
+            var layoutPath = AppPaths.FindFile("carrier-layout.json")
+                ?? AppPaths.FindFile("carrier-layout.example.json");
+            AppEnvConfig.ApplyCarrierLayoutDefaults(layoutPath);
+            AppEnvConfig.Load(AppPaths.ExeDirectory);
 
             var htmlFile = AppEnvConfig.Mode == AppEnvConfig.AppMode.NameLabel
                 ? "姓名貼鍵盤.html"
                 : "載具生成器2.html";
 
-            // 使用輸出目錄路徑；發布時請將 html 與 .env 放在 exe 同目錄
-            var htmlPath = Path.Combine(Application.StartupPath, htmlFile);
+            var contentRoot = AppPaths.ContentRoot;
+            var htmlPath = AppPaths.FindFile(htmlFile) ?? Path.Combine(contentRoot, htmlFile);
             if (!File.Exists(htmlPath))
             {
                 htmlPath = AppEnvConfig.Mode == AppEnvConfig.AppMode.NameLabel
                     ? @"C:\Users\user\Documents\GitHub\Cloud-Invoice-Carrier\Cloud-Invoice-Carrier\Cloud-Invoice-Carrier\姓名貼鍵盤.html"
                     : @"C:\Users\user\Documents\GitHub\Cloud-Invoice-Carrier\Cloud-Invoice-Carrier\Cloud-Invoice-Carrier\載具生成器2.html"; // 開發時 fallback
+                contentRoot = Path.GetDirectoryName(htmlPath) ?? AppPaths.ContentRoot;
             }
-            webView21.CoreWebView2.WebMessageReceived += WebView_WebMessageReceived;
+            else
+            {
+                contentRoot = Path.GetDirectoryName(htmlPath) ?? AppPaths.ContentRoot;
+            }
 
-            webView21.CoreWebView2.NavigationCompleted += (s, args) =>
+            webView21.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                AppVirtualHost,
+                contentRoot,
+                CoreWebView2HostResourceAccessKind.Allow);
+
+            webView21.CoreWebView2.WebMessageReceived += WebView_WebMessageReceived;
+            WireBillAcceptorForCarrierMode();
+            EnsureBillAcceptorStartedAfterNavigation();
+
+            webView21.CoreWebView2.NavigationCompleted += (_, args) =>
             {
                 if (!args.IsSuccess) return;
                 if (AppEnvConfig.Mode == AppEnvConfig.AppMode.NameLabel)
                 {
+                    _ = Task.Run(() =>
+                    {
+                        try
+                        {
+                            var dbPath = AppPaths.FindFile(Path.Combine("jszhuyin", "database.data"))
+                                ?? AppPaths.CombineContent(Path.Combine("jszhuyin", "database.data"));
+                            if (!File.Exists(dbPath))
+                                return;
+
+                            var base64 = Convert.ToBase64String(File.ReadAllBytes(dbPath));
+                            BeginInvoke(() =>
+                            {
+                                if (webView21.CoreWebView2 == null) return;
+                                try
+                                {
+                                    webView21.CoreWebView2.PostWebMessageAsJson(
+                                        JsonSerializer.Serialize(new { type = "setJsZhuyinDatabase", base64 }));
+                                }
+                                catch { }
+                            });
+                        }
+                        catch { }
+                    });
+
                     try
                     {
-                        var dbPath = Path.Combine(Application.StartupPath, "jszhuyin", "database.data");
-                        if (File.Exists(dbPath))
+                        var layout = new
                         {
-                            var base64 = Convert.ToBase64String(File.ReadAllBytes(dbPath));
-                            webView21.CoreWebView2.PostWebMessageAsJson(
-                                JsonSerializer.Serialize(new { type = "setJsZhuyinDatabase", base64 }));
-                        }
+                            type = "setNameLabelLayout",
+                            dpi = AppEnvConfig.TscDpi,
+                            widthMm = AppEnvConfig.LabelWidthMm,
+                            heightMm = AppEnvConfig.LabelHeightMm,
+                            columns = AppEnvConfig.NameLabelColumns,
+                            rows = AppEnvConfig.NameLabelRows,
+                            columnGapMm = AppEnvConfig.NameLabelColumnGapMm,
+                            rowGapMm = AppEnvConfig.NameLabelRowGapMm,
+                            gridHeightMm = AppEnvConfig.NameLabelGridHeightMm,
+                            layoutScale = AppEnvConfig.NameLabelLayoutScale,
+                            charSpacingPx = AppEnvConfig.NameLabelCharSpacingPx,
+                            firstColumnOffsetXPx = AppEnvConfig.NameLabelFirstColumnOffsetXPx,
+                            columnOffsetsXPx = AppEnvConfig.NameLabelColumnOffsetsXPx,
+                            rotate180 = AppEnvConfig.NameLabelRotate180,
+                            defaultFontFamily = AppEnvConfig.NameLabelBitmapFontFamily
+                        };
+                        webView21.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(layout));
                     }
                     catch
                     {
-                        // 由前端顯示錯誤訊息，避免阻斷主流程
+                        // 預覽僅輔助用途，無設定不致命
                     }
                     return;
                 }
 
-                var asm = Assembly.GetExecutingAssembly();
-                // 載具背景（畫面預覽用）
-                var previewNames = asm.GetManifestResourceNames()
-                    .Where(n => n.Contains("picture") && n.Contains("載具背景"))
-                    .OrderBy(n => n, StringComparer.Ordinal)
-                    .ToList();
-                var previewDataUrls = new List<string>();
-                foreach (var name in previewNames)
-                {
-                    try
-                    {
-                        using var stream = asm.GetManifestResourceStream(name);
-                        if (stream == null) continue;
-                        using var ms = new MemoryStream();
-                        stream.CopyTo(ms);
-                        var base64 = Convert.ToBase64String(ms.ToArray());
-                        previewDataUrls.Add("data:image/png;base64," + base64);
-                    }
-                    catch { }
-                }
-
-                // 實際背景（下載／列印用）
-                var actualNames = asm.GetManifestResourceNames()
-                    .Where(n => n.Contains("picture") && n.Contains("實際背景"))
-                    .OrderBy(n => n, StringComparer.Ordinal)
-                    .ToList();
-                var actualDataUrls = new List<string>();
-                foreach (var name in actualNames)
-                {
-                    try
-                    {
-                        using var stream = asm.GetManifestResourceStream(name);
-                        if (stream == null) continue;
-                        using var ms = new MemoryStream();
-                        stream.CopyTo(ms);
-                        var base64 = Convert.ToBase64String(ms.ToArray());
-                        actualDataUrls.Add("data:image/png;base64," + base64);
-                    }
-                    catch { }
-                }
-
-                var titanDataUrls = new List<string>();
-                var titanFront = BuildImageDataUrlFromRelativePath("picture/titan01.jpg");
-                var titanBack = BuildImageDataUrlFromRelativePath("picture/titan02.jpg");
-                if (!string.IsNullOrWhiteSpace(titanFront))
-                    titanDataUrls.Add(titanFront);
-                if (!string.IsNullOrWhiteSpace(titanBack))
-                    titanDataUrls.Add(titanBack);
                 try
                 {
-                    if (previewDataUrls.Count > 0)
-                    {
-                        webView21.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { type = "setBackgroundImage", dataUrl = previewDataUrls[0] }));
-                        if (previewDataUrls.Count > 1)
-                            webView21.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { type = "setBackgroundImages", dataUrls = previewDataUrls }));
-                    }
-
-                    if (actualDataUrls.Count > 0)
-                    {
-                        webView21.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { type = "setActualBackgroundImages", dataUrls = actualDataUrls }));
-                    }
-
-                    if (titanDataUrls.Count > 0)
-                    {
-                        webView21.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { type = "setTitanBackgroundImages", dataUrls = titanDataUrls }));
-                    }
+                    PostCarrierBootstrapData(LoadCarrierBootstrapConfig());
+                    EnsureBillAcceptorStartedAfterNavigation();
+                    SyncBillAcceptorForIdlePage();
                 }
                 catch { }
             };
 
-            webView21.CoreWebView2.Navigate(new Uri(htmlPath).AbsoluteUri);
+            var relativeHtml = Path.GetRelativePath(contentRoot, htmlPath).Replace('\\', '/');
+            webView21.CoreWebView2.Navigate(BuildAppVirtualHostUri(relativeHtml));
+        }
+
+        private static string BuildAppVirtualHostUri(string relativePath)
+        {
+            var segments = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            var encoded = string.Join("/", segments.Select(Uri.EscapeDataString));
+            return $"https://{AppVirtualHost}/{encoded}";
+        }
+
+        private sealed class CarrierBootstrapConfig
+        {
+            public bool AllowBackTemplateSelection { get; init; }
+            public bool PrintBarcodeOnBack { get; init; }
+            public CarrierLayoutConfigFile? LayoutConfig { get; set; }
+        }
+
+        private CarrierBootstrapConfig LoadCarrierBootstrapConfig()
+        {
+            var config = new CarrierBootstrapConfig
+            {
+                AllowBackTemplateSelection = AppEnvConfig.CarrierAllowBackTemplateSelection,
+                PrintBarcodeOnBack = AppEnvConfig.CarrierPrintBarcodeOnBack
+            };
+
+            try
+            {
+                var layoutPath = AppPaths.FindFile("carrier-layout.json")
+                    ?? AppPaths.FindFile("carrier-layout.example.json");
+
+                if (!string.IsNullOrWhiteSpace(layoutPath) && File.Exists(layoutPath))
+                {
+                    var json = File.ReadAllText(layoutPath);
+                    config.LayoutConfig = JsonSerializer.Deserialize<CarrierLayoutConfigFile>(json, CarrierLayoutJsonOptions);
+                }
+            }
+            catch { }
+
+            return config;
+        }
+
+        private void PostCarrierBootstrapData(CarrierBootstrapConfig config)
+        {
+            if (config.LayoutConfig != null)
+            {
+                webView21.CoreWebView2.PostWebMessageAsJson(
+                    JsonSerializer.Serialize(new { type = "setCarrierLayoutConfig", config = config.LayoutConfig }, WebMessageJsonOptions));
+            }
+
+            webView21.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new
+            {
+                type = "setCarrierTemplateOptions",
+                allowBackTemplateSelection = config.AllowBackTemplateSelection,
+                printBarcodeOnBack = config.PrintBarcodeOnBack,
+                printBarcodeEnabled = AppEnvConfig.CarrierPrintBarcodeEnabled
+            }));
+
+            webView21.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new
+            {
+                type = "setPrintSaveOptions",
+                savePrintImage = AppEnvConfig.SavePrintImage
+            }));
+
+            webView21.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new
+            {
+                type = "setBillAcceptorConfig",
+                enabled = AppEnvConfig.BillAcceptorEnabled
+            }));
+
+            webView21.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new
+            {
+                type = "setCarrierUiOptions",
+                showDuplexFlipCompensation = AppEnvConfig.CarrierShowDuplexFlipCompensation
+            }));
+
+            webView21.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new
+            {
+                type = "setKioskConfig",
+                kioskEnabled = AppEnvConfig.KioskEnabled
+            }));
         }
 
         // 用 nullable 避免 CS8618 警告
@@ -159,19 +290,12 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
             public bool? isLandscape { get; set; }
         }
 
-        private static bool IsPathInsideDirectory(string directory, string candidatePath)
-        {
-            var root = Path.GetFullPath(directory.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar);
-            var full = Path.GetFullPath(candidatePath);
-            return full.StartsWith(root, StringComparison.OrdinalIgnoreCase);
-        }
-
         private static string ResolvePicturePath(string rel)
         {
             var normalized = rel.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
-            var nextToExe = Path.Combine(Application.StartupPath, normalized);
-            if (File.Exists(nextToExe))
-                return nextToExe;
+            var resolved = AppPaths.FindFile(normalized);
+            if (!string.IsNullOrWhiteSpace(resolved))
+                return resolved;
 
             var fileName = Path.GetFileName(normalized);
             var devDir = @"C:\Users\user\Documents\GitHub\Cloud-Invoice-Carrier\Cloud-Invoice-Carrier\Cloud-Invoice-Carrier\picture";
@@ -182,26 +306,7 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
                     return devPath;
             }
 
-            return nextToExe;
-        }
-
-        private static string? BuildImageDataUrlFromRelativePath(string relativePath)
-        {
-            var path = ResolvePicturePath(relativePath);
-            if (!File.Exists(path))
-                return null;
-
-            var ext = Path.GetExtension(path).ToLowerInvariant();
-            var mime = ext switch
-            {
-                ".png" => "image/png",
-                ".jpg" or ".jpeg" => "image/jpeg",
-                ".webp" => "image/webp",
-                ".gif" => "image/gif",
-                _ => "application/octet-stream"
-            };
-            var base64 = Convert.ToBase64String(File.ReadAllBytes(path));
-            return $"data:{mime};base64,{base64}";
+            return AppPaths.CombineContent(normalized);
         }
 
         private void WebView_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
@@ -209,6 +314,11 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
             try
             {
                 var json = e.WebMessageAsJson;
+                if (TryHandleBillAcceptorWebMessage(json))
+                    return;
+                if (TryHandleHostRpc(json))
+                    return;
+
                 var msg = JsonSerializer.Deserialize<HostWebMessage>(json, WebMessageJsonOptions);
                 if (msg == null || string.IsNullOrEmpty(msg.type))
                     return;
@@ -279,8 +389,8 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
                         return;
 
                     var relFront = msg.relativePath.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
-                    var frontPath = Path.GetFullPath(Path.Combine(Application.StartupPath, relFront));
-                    if (!IsPathInsideDirectory(Application.StartupPath, frontPath))
+                    var frontPath = Path.GetFullPath(ResolvePicturePath(relFront));
+                    if (!AppPaths.IsUnderAppRoots(frontPath))
                     {
                         MessageBox.Show("不允許的檔案路徑。", "列印");
                         return;
@@ -303,8 +413,8 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
                     if (msg.duplex && !string.IsNullOrWhiteSpace(msg.relativePathBack))
                     {
                         var relBack = msg.relativePathBack.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
-                        var backPath = Path.GetFullPath(Path.Combine(Application.StartupPath, relBack));
-                        if (!IsPathInsideDirectory(Application.StartupPath, backPath))
+                        var backPath = Path.GetFullPath(ResolvePicturePath(relBack));
+                        if (!AppPaths.IsUnderAppRoots(backPath))
                         {
                             MessageBox.Show("不允許的反面檔案路徑。", "列印");
                             return;
@@ -328,12 +438,10 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
 
                     var frontBytes = File.ReadAllBytes(frontPath);
 
-                    var folder = @"C:\test";
-                    Directory.CreateDirectory(folder);
-                    var outName = string.IsNullOrWhiteSpace(msg.fileName) ? Path.GetFileName(frontPath) : msg.fileName;
-                    File.WriteAllBytes(Path.Combine(folder, outName!), frontBytes);
-                    if (backBytes != null)
-                        File.WriteAllBytes(Path.Combine(folder, "back-" + outName), backBytes);
+                    SavePrintImageToDisk(
+                        string.IsNullOrWhiteSpace(msg.fileName) ? Path.GetFileName(frontPath) : msg.fileName!,
+                        frontBytes,
+                        backBytes);
 
                     PrintToHitiCs200e(frontBytes, backBytes, msg.duplex, msg.isLandscape);
                     return;
@@ -354,18 +462,11 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
                     bytesFromWebBack = Convert.FromBase64String(backBase64);
                 }
 
-                // 1. 存到 C:\test
-                var folder2 = @"C:\test";
-                Directory.CreateDirectory(folder2);
                 var fileName = string.IsNullOrWhiteSpace(msg.fileName)
                     ? "carrier-with-background.png"
                     : msg.fileName;
-                var filePath = Path.Combine(folder2, fileName);
-                File.WriteAllBytes(filePath, bytesFromWeb);
-                if (bytesFromWebBack != null)
-                    File.WriteAllBytes(Path.Combine(folder2, "back-" + fileName), bytesFromWebBack);
+                SavePrintImageToDisk(fileName, bytesFromWeb, bytesFromWebBack);
 
-                // 2. 送 HiTi：若提供 dataUrlBack，雙面第 2 頁改用反面合成圖；否則維持兩面同圖。
                 PrintToHitiCs200e(bytesFromWeb, bytesFromWebBack, msg.duplex, msg.isLandscape);
             }
             catch (Exception ex)
@@ -446,7 +547,7 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
                 if (!pd.PrinterSettings.CanDuplex)
                 {
                     AppendPrintDebug(
-                        $"duplex requested=true, canDuplex=false, printer={pd.PrinterSettings.PrinterName}, appStart={Application.StartupPath}");
+                        $"duplex requested=true, canDuplex=false, printer={pd.PrinterSettings.PrinterName}, appStart={AppPaths.ExeDirectory}");
                     MessageBox.Show(
                         "目前印表機或驅動未回報雙面能力，已取消列印。\n\n請確認：\n1) 使用正確的 HiTi CS-200e 印表機佇列\n2) 已安裝/啟用雙面模組與對應驅動\n3) Windows 印表機內容中的雙面選項可用",
                         "雙面列印不可用",
@@ -523,6 +624,28 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
             {
                 backImg?.Dispose();
                 backMs?.Dispose();
+            }
+        }
+
+        private static void SavePrintImageToDisk(string fileName, byte[] frontBytes, byte[]? backBytes = null)
+        {
+            if (!AppEnvConfig.SavePrintImage)
+                return;
+
+            try
+            {
+                var folder = AppEnvConfig.PrintSaveFolder;
+                if (string.IsNullOrWhiteSpace(folder))
+                    folder = @"C:\test";
+
+                Directory.CreateDirectory(folder);
+                File.WriteAllBytes(Path.Combine(folder, fileName), frontBytes);
+                if (backBytes != null)
+                    File.WriteAllBytes(Path.Combine(folder, "back-" + fileName), backBytes);
+            }
+            catch
+            {
+                // 存檔失敗不可中斷列印流程。
             }
         }
 

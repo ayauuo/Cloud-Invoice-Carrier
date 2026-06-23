@@ -2,14 +2,21 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no" />
   <title>姓名貼輸入（TSC）</title>
   <style>
     :root {
       color-scheme: dark;
     }
-    body {
+    html, body {
       margin: 0;
+      overflow: hidden;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: manipulation;
+    }
+    body {
       background: #0f0f10;
       color: #fff;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", "Microsoft JhengHei", Arial;
@@ -19,6 +26,10 @@
       justify-content: center;
       padding: 18px;
       box-sizing: border-box;
+    }
+    input, textarea {
+      -webkit-user-select: text;
+      user-select: text;
     }
     .panel {
       width: min(980px, 100%);
@@ -232,6 +243,45 @@
     #btnBksp { background: #3b3b3b; color: #fff; }
     #btnClear { background: #6b4b00; color: #fff; font-weight: 700; }
     #btnPrint { background: #c62828; color: #fff; font-weight: 800; }
+    .preview-box {
+      margin-top: 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      padding: 12px;
+    }
+    .preview-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .preview-title {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+    .preview-meta {
+      font-size: 12px;
+      opacity: 0.75;
+    }
+    .preview-canvas-wrap {
+      background: repeating-conic-gradient(#1c1c1f 0% 25%, #232327 0% 50%) 50% / 14px 14px;
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 180px;
+    }
+    #previewCanvas {
+      background: #ffffff;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      max-width: 100%;
+      height: auto;
+    }
   </style>
 </head>
 <body>
@@ -243,6 +293,16 @@
     </p>
 
     <textarea id="nameInput" lang="zh-TW" inputmode="text" placeholder="請輸入姓名、注音或要列印的文字"></textarea>
+
+    <div class="preview-box" aria-label="列印版面預覽">
+      <div class="preview-head">
+        <div class="preview-title">列印預覽（同字型 / 同欄列分布）</div>
+        <div class="preview-meta" id="previewMeta">等待版面設定…</div>
+      </div>
+      <div class="preview-canvas-wrap">
+        <canvas id="previewCanvas" width="320" height="200"></canvas>
+      </div>
+    </div>
 
     <div class="ime-box" aria-label="注音輸入法區">
       <div class="ime-composition" id="composition">（請輸入注音）</div>
@@ -303,6 +363,9 @@
       var fontSelectEl = document.getElementById("fontSelect");
       var imeBoxEl = document.querySelector(".ime-box");
       var modeButtons = Array.prototype.slice.call(document.querySelectorAll(".kbd-mode-btn"));
+      var previewCanvas = document.getElementById("previewCanvas");
+      var previewMetaEl = document.getElementById("previewMeta");
+      var labelLayout = null;
       var composition = "";
       var ime = null;
       var candidates = [];
@@ -366,11 +429,13 @@
 
       function updateCompositionView() {
         compositionEl.textContent = composition || "（請輸入注音）";
+        renderPreview();
       }
 
       function commitText(text) {
         if (!text) return;
         insertAtCaret(text);
+        renderPreview();
       }
 
       function renderCandidates() {
@@ -493,18 +558,175 @@
         if (!(window.chrome && window.chrome.webview)) return;
         window.chrome.webview.addEventListener("message", function(evt) {
           var msg = evt && evt.data;
-          if (!msg || msg.type !== "setJsZhuyinDatabase" || !msg.base64) return;
-          try {
-            pendingDbArrayBuffer = base64ToArrayBuffer(msg.base64);
-            if (waitingDbResolver) {
-              var resolver = waitingDbResolver;
-              waitingDbResolver = null;
-              resolver(pendingDbArrayBuffer);
+          if (!msg || !msg.type) return;
+
+          if (msg.type === "setJsZhuyinDatabase" && msg.base64) {
+            try {
+              pendingDbArrayBuffer = base64ToArrayBuffer(msg.base64);
+              if (waitingDbResolver) {
+                var resolver = waitingDbResolver;
+                waitingDbResolver = null;
+                resolver(pendingDbArrayBuffer);
+              }
+            } catch (err) {
+              compositionEl.textContent = "字庫解碼失敗：" + (err && err.message ? err.message : "未知錯誤");
             }
-          } catch (err) {
-            compositionEl.textContent = "字庫解碼失敗：" + (err && err.message ? err.message : "未知錯誤");
+            return;
+          }
+
+          if (msg.type === "setNameLabelLayout") {
+            labelLayout = msg;
+            if (msg.defaultFontFamily && !localStorage.getItem(FONT_STORAGE_KEY)) {
+              var hasOpt = Array.prototype.some.call(fontSelectEl.options, function(o){ return o.value === msg.defaultFontFamily; });
+              if (hasOpt) {
+                fontSelectEl.value = msg.defaultFontFamily;
+                applyInputPreviewFont(msg.defaultFontFamily);
+              }
+            }
+            renderPreview();
+            return;
           }
         });
+      }
+
+      function renderPreview() {
+        var ctx = previewCanvas.getContext("2d");
+        var cfg = labelLayout || {
+          widthMm: 50, heightMm: 30, columns: 1, rows: 1,
+          columnGapMm: 0, rowGapMm: 0, gridHeightMm: 0,
+          layoutScale: 1.0, charSpacingPx: 0, dpi: 300,
+          firstColumnOffsetXPx: 0, columnOffsetsXPx: [], rotate180: false
+        };
+
+        var widthMm  = Math.max(5, +cfg.widthMm  || 50);
+        var heightMm = Math.max(5, +cfg.heightMm || 30);
+        var cols     = Math.max(1, parseInt(cfg.columns, 10) || 1);
+        var rows     = Math.max(1, parseInt(cfg.rows, 10) || 1);
+        var colGapMm = Math.max(0, +cfg.columnGapMm || 0);
+        var rowGapMm = Math.max(0, +cfg.rowGapMm || 0);
+        var gridHMm  = +cfg.gridHeightMm || 0;
+        var scale    = Math.max(0.001, +cfg.layoutScale || 1);
+        var charSpaceDots = parseInt(cfg.charSpacingPx, 10) || 0;
+        var dpi      = Math.max(72, parseInt(cfg.dpi, 10) || 300);
+        var rotate180 = !!cfg.rotate180;
+        var firstColOffsetDots = parseInt(cfg.firstColumnOffsetXPx, 10) || 0;
+        var colOffsetsDots = Array.isArray(cfg.columnOffsetsXPx) ? cfg.columnOffsetsXPx : [];
+
+        var maxPreviewW = 460;
+        var maxPreviewH = 320;
+        var pxPerMm = Math.min(maxPreviewW / widthMm, maxPreviewH / heightMm);
+        var canvasW = Math.round(widthMm * pxPerMm);
+        var canvasH = Math.round(heightMm * pxPerMm);
+        previewCanvas.width  = canvasW;
+        previewCanvas.height = canvasH;
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvasW, canvasH);
+
+        var marginMm = Math.min(widthMm, heightMm) * 0.02;
+        var totalUsableHmm = Math.max(2, heightMm - marginMm * 2);
+        var targetGridHmm = gridHMm > 0 ? Math.min(totalUsableHmm, gridHMm) : totalUsableHmm;
+        var gridTopMm = marginMm + Math.max(0, totalUsableHmm - targetGridHmm);
+        var usableWmm = Math.max(2, widthMm - marginMm * 2 - colGapMm * (cols - 1));
+        var usableHmm = Math.max(2, targetGridHmm - rowGapMm * (rows - 1));
+        var cellWmm = usableWmm / cols;
+        var cellHmm = usableHmm / rows;
+
+        ctx.save();
+
+        ctx.strokeStyle = "rgba(0,0,0,0.18)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 3]);
+        for (var r = 0; r < rows; r++) {
+          for (var c = 0; c < cols; c++) {
+            var cellXmm = marginMm + c * (cellWmm + colGapMm);
+            var cellYmm = gridTopMm + r * (cellHmm + rowGapMm);
+            ctx.strokeRect(cellXmm * pxPerMm, cellYmm * pxPerMm, cellWmm * pxPerMm, cellHmm * pxPerMm);
+          }
+        }
+        ctx.setLineDash([]);
+
+        var rawText = String(ta.value || "").trim();
+        if (composition) rawText += composition;
+        if (!rawText) {
+          ctx.restore();
+          previewMetaEl.textContent =
+            widthMm + "×" + heightMm + " mm  /  " + cols + "×" + rows +
+            "  /  scale " + scale + "  /  spacing " + charSpaceDots + "px";
+          return;
+        }
+
+        var fontFamily = fontSelectEl.value || "Microsoft JhengHei";
+        var dotsToMm = 25.4 / dpi;
+        var charSpaceMm = charSpaceDots * dotsToMm;
+        var firstColOffsetMm = firstColOffsetDots * dotsToMm;
+
+        var padXmm = Math.max(0.2, cellWmm * 0.1 * scale);
+        var padYmm = Math.max(0.2, cellHmm * 0.12 * scale);
+        var innerWmm = Math.max(0.5, cellWmm - padXmm * 2);
+        var innerHmm = Math.max(0.5, cellHmm - padYmm * 2);
+
+        function measureTrackedWidthPx(text, fontPx, trackingPx) {
+          if (!text) return 0;
+          var w = 0;
+          for (var i = 0; i < text.length; i++) {
+            w += ctx.measureText(text[i]).width;
+            if (i < text.length - 1) w += trackingPx;
+          }
+          return w;
+        }
+
+        var innerWpx = innerWmm * pxPerMm;
+        var innerHpx = innerHmm * pxPerMm;
+        // 熱感應實印時，負字距通常不會像理論值那麼「硬擠」；預覽端稍微減弱負值效果，讓畫面更接近實際觀感。
+        var trackingScale = charSpaceDots < 0 ? 0.45 : 1.0;
+        var trackingPxPreview = charSpaceMm * pxPerMm * trackingScale;
+
+        var lowFont = Math.max(6, 10 * scale);
+        var highFont = Math.max(lowFont, Math.min(innerWpx * 0.42 * scale + lowFont, innerHpx * 0.9));
+        var bestFont = lowFont;
+        for (var iter = 0; iter < 28 && (highFont - lowFont) > 0.5; iter++) {
+          var mid = (highFont + lowFont) / 2;
+          ctx.font = "bold " + mid + "px '" + fontFamily + "', 'Microsoft JhengHei', 'Noto Sans TC', sans-serif";
+          var tw = measureTrackedWidthPx(rawText, mid, trackingPxPreview);
+          if (tw <= innerWpx * 0.95) { bestFont = mid; lowFont = mid; }
+          else { highFont = mid - 0.5; }
+        }
+
+        ctx.fillStyle = "#000";
+        ctx.textBaseline = "middle";
+        ctx.font = "bold " + bestFont + "px '" + fontFamily + "', 'Microsoft JhengHei', 'Noto Sans TC', sans-serif";
+
+        for (var rr = 0; rr < rows; rr++) {
+          for (var cc = 0; cc < cols; cc++) {
+            var cellXmm2 = marginMm + cc * (cellWmm + colGapMm);
+            var cellYmm2 = gridTopMm + rr * (cellHmm + rowGapMm);
+            var offsetMm = 0;
+            if (colOffsetsDots && cc < colOffsetsDots.length) {
+              offsetMm = (parseInt(colOffsetsDots[cc], 10) || 0) * dotsToMm;
+            } else if (cc === 0) {
+              offsetMm = firstColOffsetMm;
+            }
+
+            var textW = measureTrackedWidthPx(rawText, bestFont, trackingPxPreview);
+            var areaXpx = (cellXmm2 + padXmm + offsetMm) * pxPerMm;
+            var areaWpx = innerWmm * pxPerMm;
+            var startXpx = areaXpx + (areaWpx - textW) / 2;
+            var centerYpx = (cellYmm2 + padYmm + innerHmm / 2) * pxPerMm;
+
+            var x = startXpx;
+            for (var k = 0; k < rawText.length; k++) {
+              ctx.fillText(rawText[k], x, centerYpx);
+              x += ctx.measureText(rawText[k]).width + trackingPxPreview;
+            }
+          }
+        }
+        ctx.restore();
+
+        previewMetaEl.textContent =
+          widthMm + "×" + heightMm + " mm  /  " + cols + "×" + rows +
+          "  /  字級≈" + Math.round(bestFont) + "px  /  scale " + scale +
+          "  /  spacing " + charSpaceDots + "px";
       }
 
       async function initJsZhuyin() {
@@ -636,6 +858,7 @@
         renderCandidates();
         ta.value = "";
         ta.focus();
+        renderPreview();
       });
 
       btnExpandCandidatesEl.addEventListener("click", function () {
@@ -710,6 +933,11 @@
       fontSelectEl.addEventListener("change", function () {
         localStorage.setItem(FONT_STORAGE_KEY, fontSelectEl.value);
         applyInputPreviewFont(fontSelectEl.value);
+        renderPreview();
+      });
+
+      ta.addEventListener("input", function () {
+        renderPreview();
       });
 
       document.getElementById("btnPrint").addEventListener("click", function () {
@@ -730,6 +958,7 @@
       renderKeyboard();
       setupHostDbBridge();
       initJsZhuyin();
+      renderPreview();
       ta.focus();
     })();
   </script>

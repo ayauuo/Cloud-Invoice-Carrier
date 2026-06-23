@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no" />
 
   <!--
     商用說明（請保留此段註解 / 或在你專案的 THIRD-PARTY-NOTICES 中保留）
@@ -15,8 +15,15 @@
   <title>載具輸入產生條碼</title>
 
   <style>
-    body {
+    html, body {
       margin: 0;
+      overflow: hidden;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: manipulation;
+    }
+    body {
       background: #0f0f10;
       color: #fff;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", Arial;
@@ -26,6 +33,10 @@
       justify-content: center;
       padding: 24px;
       box-sizing: border-box;
+    }
+    input, textarea {
+      -webkit-user-select: text;
+      user-select: text;
     }
 
     .panel {
@@ -87,6 +98,7 @@
     }
 
     #barcode { background: transparent; border-radius: 12px; padding: 0; }
+    #barcode svg { display: block; max-width: 100%; height: auto; }
 
     .simple-keyboard.hg-theme-default {
       margin-top: 16px;
@@ -103,6 +115,8 @@
       height: 62px;
       font-size: 20px;
       border: 1px solid rgba(255,255,255,0.08);
+      touch-action: manipulation;
+      user-select: none;
     }
 
     .simple-keyboard .hg-button span { color: #ffffff !important; }
@@ -111,13 +125,13 @@
 
     .simple-keyboard .hg-button[data-skbtn="{bksp}"] { background: #3b3b3b; }
     .simple-keyboard .hg-button[data-skbtn="{clear}"] { background: #6b4b00; font-weight: 700; }
-    .simple-keyboard .hg-button[data-skbtn="{enter}"] { background: #c62828; font-weight: 800; width: 160px; }
+    .simple-keyboard .hg-button[data-skbtn="{enter}"] { background: #c62828; font-weight: 800; width: 190px; font-size: 18px; }
     .simple-keyboard .hg-button[data-skbtn="{gen}"] { background: #000000; font-weight: 800; width: 160px; }
 
     .card-templates {
       margin-top: 16px;
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 12px;
     }
     .card-option {
@@ -186,7 +200,8 @@
     .flip-hint {
       margin-top: 10px;
       font-size: 13px;
-      color: rgba(255,255,255,0.68);
+      color: #000;
+      font-weight: 700;
       text-align: center;
     }
     .buttons-row {
@@ -196,21 +211,19 @@
       gap: 16px;
     }
     .buttons-row button {
-      min-width: 96px;
-      padding: 10px 18px;
-      border-radius: 999px;
+      padding: 0;
       border: none;
-      font-size: 16px;
-      letter-spacing: 4px;
+      background: transparent;
       cursor: pointer;
+      line-height: 0;
+      touch-action: manipulation;
     }
-    #btnBack {
-      background: #eee;
-      color: #333;
-    }
-    #btnPrint {
-      background: #000;
-      color: #fff;
+    .buttons-row button img {
+      display: block;
+      width: auto;
+      height: auto;
+      max-width: min(42vw, 280px);
+      pointer-events: none;
     }
 
     @media (max-width: 480px) {
@@ -218,51 +231,583 @@
       .simple-keyboard .hg-button { height: 54px; font-size: 18px; }
       #barcode { transform: scale(0.95); transform-origin: center; }
     }
+
+    .idle-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background: #000;
+      overflow: hidden;
+    }
+
+    .idle-screen.is-click-to-start {
+      cursor: pointer;
+    }
+
+    .idle-carousel {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .idle-carousel__slide {
+      position: absolute;
+      inset: 0;
+      background-repeat: no-repeat;
+      background-size: contain;
+      background-position: center;
+      opacity: 0;
+      transition: opacity 0.8s ease-in-out;
+      pointer-events: none;
+    }
+
+    .idle-carousel__slide.is-active {
+      opacity: 1;
+    }
+
+    .input-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      display: none;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .input-screen__bg {
+      position: absolute;
+      inset: 0;
+      background-repeat: no-repeat;
+      background-size: contain;
+      background-position: center;
+      pointer-events: none;
+    }
+
+    .input-screen__content {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 24vh 6vw 6vh;
+      box-sizing: border-box;
+      gap: 10px;
+    }
+
+    .input-screen #input {
+      background: rgba(255, 251, 244, 0.94);
+      color: #4a3520;
+      border: 2px solid rgba(139, 90, 43, 0.28);
+    }
+
+    .input-screen #input::placeholder {
+      color: rgba(74, 53, 32, 0.45);
+    }
+
+    .input-screen .barcodeBox {
+      background: rgba(255, 255, 255, 0.96);
+      margin-bottom: 0;
+    }
+
+    .input-screen .simple-keyboard.hg-theme-default {
+      margin-top: 0;
+      background: rgba(29, 31, 34, 0.92);
+      flex-shrink: 0;
+    }
+
+    .print-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      display: none;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .print-screen__bg {
+      position: absolute;
+      inset: 0;
+      background-repeat: no-repeat;
+      background-size: contain;
+      background-position: center;
+      pointer-events: none;
+    }
+
+    .choose-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      display: none;
+      overflow: hidden;
+      background: #000;
+      flex-direction: column;
+      align-items: center;
+      padding-bottom: 50px;
+      box-sizing: border-box;
+    }
+
+    .choose-screen__bg {
+      position: absolute;
+      inset: 0;
+      background-repeat: no-repeat;
+      background-size: contain;
+      background-position: center;
+      pointer-events: none;
+    }
+
+    .choose-screen__content {
+      position: relative;
+      flex: 1 1 auto;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-y: auto;
+      min-height: 0;
+      padding: calc(18vh + 10px) 4vw 0;
+      box-sizing: border-box;
+    }
+
+    .choose-screen__content > * {
+      width: min(100%, 720px);
+    }
+
+    .choose-screen__templates {
+      width: min(92vw, 900px);
+      margin-top: 0;
+    }
+
+    .choose-screen__templates-row {
+      display: flex;
+      gap: 18px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .choose-screen__templates-row > div {
+      min-width: 0;
+      flex: 1 1 100%;
+    }
+
+    .choose-screen .title {
+      color: #4a3520;
+      text-align: center;
+    }
+
+    .choose-screen__section-title {
+      margin: 0 0 10px;
+    }
+
+    .choose-screen .card-templates {
+      margin-top: 0;
+      gap: 14px;
+    }
+
+    .choose-screen .card-option {
+      min-height: 132px;
+      border-radius: 14px;
+      background: #ebe4d8;
+    }
+
+    .choose-screen .preview-box {
+      width: min(98vw, 840px);
+      padding: 4px 6px;
+    }
+
+    .choose-screen .flip-card {
+      width: 100%;
+      aspect-ratio: 1.58 / 1;
+      min-height: 420px;
+      margin: 0 auto;
+    }
+
+    .choose-screen .flip-face {
+      align-items: stretch;
+      justify-content: stretch;
+    }
+
+    .choose-screen .flip-face canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .choose-screen__preview-section {
+      flex-shrink: 0;
+      margin-top: auto;
+      margin-bottom: 100px;
+      width: min(98vw, 840px);
+      z-index: 1;
+    }
+
+    .choose-screen__preview-section > .title {
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+
+    .choose-screen__footer {
+      position: relative;
+      flex-shrink: 0;
+      z-index: 1;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      width: 100%;
+      pointer-events: none;
+    }
+
+    .choose-screen__footer .buttons-row {
+      margin-top: 0;
+      pointer-events: auto;
+    }
+
+    .choose-screen__footer .buttons-row button img {
+      max-width: min(44vw, 300px);
+    }
+
+    @media (orientation: portrait) {
+      .choose-screen__content {
+        padding-top: calc(18vh + 10px);
+      }
+
+      .choose-screen__templates {
+        width: min(94vw, 920px);
+      }
+
+      .choose-screen .card-option {
+        min-height: 148px;
+      }
+
+      .choose-screen .preview-box {
+        width: min(98vw, 880px);
+      }
+
+      .choose-screen .flip-card {
+        min-height: 480px;
+      }
+
+      .choose-screen__preview-section {
+        width: min(98vw, 880px);
+      }
+
+    }
+
+    .secret-hotspot {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 90px;
+      height: 90px;
+      z-index: 2147483646;
+      background: transparent;
+    }
+
+    .secret-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2147483647;
+    }
+
+    .secret-keypad,
+    .secret-menu {
+      width: 320px;
+      background: #111;
+      color: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .secret-menu { width: 280px; }
+
+    .secret-title {
+      font-size: 18px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .secret-input {
+      text-align: center;
+      font-size: 22px;
+      letter-spacing: 4px;
+      padding: 10px 0 6px;
+    }
+
+    .secret-error {
+      text-align: center;
+      color: #ff8a8a;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .secret-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .secret-grid .key {
+      height: 48px;
+      font-size: 18px;
+      border-radius: 8px;
+      border: none;
+      background: #2b2b2b;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .secret-grid .key.secondary { background: #3b3b3b; }
+
+    .secret-actions {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 14px;
+      gap: 10px;
+    }
+
+    .secret-actions .btn {
+      flex: 1;
+      height: 40px;
+      border-radius: 8px;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .secret-actions .btn.ghost {
+      background: transparent;
+      color: #fff;
+      border: 1px solid #555;
+    }
+
+    .secret-actions .btn.primary {
+      background: #4f8cff;
+      color: #fff;
+    }
+
+    .menu-btn {
+      display: block;
+      width: 100%;
+      height: 44px;
+      margin-bottom: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      background: #2b2b2b;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .menu-btn--ghost {
+      margin-top: 12px;
+      background: transparent;
+      border: 1px solid #555;
+    }
+
+    .menu-btn--danger { background: #c0392b; }
+
+    .db-view {
+      position: fixed;
+      inset: 0;
+      /* 須高於 secret-hotspot，否則右上角關閉鈕會被 90×90 透明熱區擋住 */
+      z-index: 2147483647;
+      background: #1a1a2e;
+      color: #eee;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .db-view.is-open { display: flex; }
+
+    .db-view__toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: #16213e;
+      flex-shrink: 0;
+    }
+
+    .db-view__title {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .db-view__close {
+      position: relative;
+      z-index: 1;
+      padding: 8px 20px;
+      font-size: 16px;
+      background: #e94560;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .db-view__content {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .db-view__sidebar {
+      width: 260px;
+      padding: 20px;
+      background: #0f3460;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+
+    .db-view__label {
+      font-size: 14px;
+      color: #aaa;
+    }
+
+    .db-view__date-input {
+      padding: 10px 12px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: #1a1a2e;
+      color: #eee;
+    }
+
+    .db-view__range-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .range-btn {
+      padding: 10px 14px;
+      font-size: 15px;
+      background: #1a1a2e;
+      color: #ccc;
+      border: 1px solid #444;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .range-btn.active {
+      background: #e94560;
+      color: #fff;
+      border-color: #e94560;
+    }
+
+    .db-view__totals {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #333;
+    }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 16px;
+    }
+
+    .total-row .total-label { color: #aaa; }
+    .total-row .total-value { font-weight: bold; color: #fff; }
+    .total-row--test .total-value { color: #f39c12; }
+
+    .db-view__main {
+      flex: 1;
+      min-height: 0;
+      padding: 20px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .db-view__table-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .db-view__table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .db-view__table th,
+    .db-view__table td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid #333;
+    }
+
+    .db-view__table th {
+      background: #16213e;
+      color: #aaa;
+      font-weight: 600;
+    }
+
+    .db-view__error { color: #e94560; margin: 0; }
+    .db-view__loading { color: #aaa; margin: 0; }
+    .db-view__empty { text-align: center; color: #888; padding: 24px; }
   </style>
 </head>
 
 <body>
-  <div id="step1" class="panel">
-    <h1 class="title">輸入載具號碼 → 產生載具</h1>
-    <p class="hint">
-      載具為 8 碼，開頭「/」，後面 7 碼（可用 A-Z、0-9、+、-、.）。USB 條碼掃描器請設為鍵盤模式（HID），掃描時即便焦點在螢幕鍵盤上，讀到的內容也會寫入下方欄位。
-    </p>
-
-    <input id="input" placeholder="/JNXJ3S0（或輸入 7 碼：JNXJ3S0）" autocomplete="off" spellcheck="false" inputmode="text" />
-
-    <div id="err" class="err"></div>
-
-    <div class="barcodeBox" aria-label="barcode">
-      <svg id="barcode"></svg>
+  <div id="step0" class="idle-screen" aria-label="待機畫面">
+    <div class="idle-carousel" id="idleCarousel">
+      <div class="idle-carousel__slide is-active" style="background-image:url('picture/AdPage/1.png')"></div>
+      <div class="idle-carousel__slide" style="background-image:url('picture/AdPage/2.png')"></div>
     </div>
-
-    <div class="simple-keyboard"></div>
   </div>
 
-  <div id="step2" class="panel" style="display:none;">
-    <h1 class="title">選擇卡片樣式</h1>
-    <div class="card-templates">
-      <img class="card-option selected" data-template="1" alt="樣式1" />
-      <img class="card-option" data-template="2" alt="樣式2" />
-      <img class="card-option" data-template="3" alt="樣式3" />
-      <img class="card-option" data-template="4" alt="樣式4" />
+  <div id="step1" class="input-screen" style="display:none;" aria-label="輸入載具">
+    <div class="input-screen__bg" style="background-image:url('picture/InputPage/1.png')"></div>
+    <div class="input-screen__content">
+      <input id="input" placeholder="/JNXJ3S0（或輸入 7 碼：JNXJ3S0）" autocomplete="off" spellcheck="false" inputmode="text" />
+
+      <div id="err" class="err"></div>
+
+      <div class="barcodeBox" aria-label="barcode">
+        <svg id="barcode"></svg>
+      </div>
+
+      <div class="simple-keyboard"></div>
     </div>
-    <h2 class="title" style="margin-top:24px;">成品預覽</h2>
-    <div class="preview-box">
-      <div class="flip-card" id="flipCard" aria-label="3D 預覽卡片">
-        <div class="flip-inner" id="flipInner">
-          <div class="flip-face front">
-            <canvas id="previewFrontCanvas"></canvas>
-          </div>
-          <div class="flip-face back">
-            <canvas id="previewBackCanvas"></canvas>
-          </div>
+  </div>
+
+  <div id="stepPrint" class="print-screen" style="display:none;" aria-label="列印中">
+    <div class="print-screen__bg" style="background-image:url('picture/PrintPage/1.png')"></div>
+  </div>
+
+  <div id="step2" class="choose-screen" style="display:none;" aria-label="選擇版型">
+    <div class="choose-screen__bg" style="background-image:url('picture/ChoosePage/1.png')"></div>
+    <div class="choose-screen__content">
+    <div class="choose-screen__templates">
+      <h2 class="title choose-screen__section-title">選擇卡面樣式</h2>
+      <div class="choose-screen__templates-row">
+        <div>
+          <div class="card-templates" id="frontTemplateSelector"></div>
+        </div>
+        <div id="backTemplatePanel">
+          <h2 class="title" style="font-size:20px; margin-top:0; margin-bottom:12px; text-align:center;">二面樣式</h2>
+          <div class="card-templates" id="backTemplateSelector"></div>
         </div>
       </div>
     </div>
-    <p class="flip-hint">左右滑動可查看正反面（也可點擊預覽切換）</p>
-    <p class="hint" style="margin-top:12px; margin-bottom:0; text-align:center;">列印內容</p>
-    <div class="print-options" style="margin-top:8px; display:flex; justify-content:center; gap:18px; flex-wrap:wrap;">
+    <p id="printWhatHint" class="hint" style="margin-top:12px; margin-bottom:0; text-align:center;">列印內容</p>
+    <div id="printWhatOptions" class="print-options" style="margin-top:8px; display:flex; justify-content:center; gap:18px; flex-wrap:wrap;">
       <label style="display:flex; align-items:center; gap:8px; font-size:16px; cursor:pointer; user-select:none;">
         <input type="radio" name="printWhat" value="carrier" checked />
         列印載具（合成圖）
@@ -276,8 +821,8 @@
         列印 titan01 / titan02（雙面）
       </label>
     </div>
-    <p class="hint" style="margin-top:10px; margin-bottom:0; text-align:center;">列印方式</p>
-    <div class="print-options" style="margin-top:8px; display:flex; justify-content:center; gap:18px; flex-wrap:wrap;">
+    <p id="printDuplexHint" class="hint" style="margin-top:10px; margin-bottom:0; text-align:center;">列印方式</p>
+    <div id="printDuplexOptions" class="print-options" style="margin-top:8px; display:flex; justify-content:center; gap:18px; flex-wrap:wrap;">
       <label style="display:flex; align-items:center; gap:8px; font-size:16px; cursor:pointer; user-select:none;">
         <input type="radio" name="printDuplex" value="simplex" checked />
         單面列印
@@ -287,8 +832,8 @@
         雙面列印
       </label>
     </div>
-    <p class="hint" style="margin-top:10px; margin-bottom:0; text-align:center;">雙面翻面補償（各樣式／001 各別記憶；不會改印表機橫向紙張）</p>
-    <div class="print-options" style="margin-top:8px; display:flex; justify-content:center; gap:14px; flex-wrap:wrap;">
+    <p id="duplexFlipCompHint" class="hint" style="margin-top:10px; margin-bottom:0; text-align:center;">雙面翻面補償（各樣式／001 各別記憶；不會改印表機橫向紙張）</p>
+    <div id="duplexFlipCompOptions" class="print-options" style="margin-top:8px; display:flex; justify-content:center; gap:14px; flex-wrap:wrap;">
       <label style="display:flex; align-items:center; gap:8px; font-size:15px; cursor:pointer; user-select:none;">
         <input type="radio" name="printLandscapeAnnot" value="auto" checked />
         自動
@@ -302,9 +847,114 @@
         直版
       </label>
     </div>
-    <div class="buttons-row">
-      <button type="button" id="btnBack">重選</button>
-      <button type="button" id="btnPrint">列印</button>
+    </div>
+    <div class="choose-screen__preview-section">
+      <h2 class="title">成品預覽</h2>
+      <div class="preview-box">
+        <div class="flip-card" id="flipCard" aria-label="3D 預覽卡片">
+          <div class="flip-inner" id="flipInner">
+            <div class="flip-face front">
+              <canvas id="previewFrontCanvas"></canvas>
+            </div>
+            <div class="flip-face back">
+              <canvas id="previewBackCanvas"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="choose-screen__footer">
+      <div class="buttons-row">
+        <button type="button" id="btnBack" aria-label="重新輸入條碼">
+          <img src="picture/ChoosePage/BackButton.png" alt="" />
+        </button>
+        <button type="button" id="btnPrint" aria-label="列印">
+          <img src="picture/ChoosePage/PrintButton.png" alt="" />
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="secretHotspot" class="secret-hotspot" aria-hidden="true"></div>
+
+  <div id="secretOverlay" class="secret-overlay" style="display:none;" role="dialog" aria-label="管理登入">
+    <div id="secretKeypad" class="secret-keypad">
+      <div class="secret-title">請輸入密碼</div>
+      <div id="secretInputDisplay" class="secret-input">____</div>
+      <div id="secretError" class="secret-error" style="display:none;"></div>
+      <div class="secret-grid">
+        <button type="button" class="key" data-digit="1">1</button>
+        <button type="button" class="key" data-digit="2">2</button>
+        <button type="button" class="key" data-digit="3">3</button>
+        <button type="button" class="key" data-digit="4">4</button>
+        <button type="button" class="key" data-digit="5">5</button>
+        <button type="button" class="key" data-digit="6">6</button>
+        <button type="button" class="key" data-digit="7">7</button>
+        <button type="button" class="key" data-digit="8">8</button>
+        <button type="button" class="key" data-digit="9">9</button>
+        <button type="button" class="key secondary" id="secretClear">清除</button>
+        <button type="button" class="key" data-digit="0">0</button>
+        <button type="button" class="key secondary" id="secretBackspace">退格</button>
+      </div>
+      <div class="secret-actions">
+        <button type="button" class="btn ghost" id="secretCancel">取消</button>
+        <button type="button" class="btn primary" id="secretSubmit">確認</button>
+      </div>
+    </div>
+    <div id="secretMenu" class="secret-menu" style="display:none;">
+      <div class="secret-title">管理選單</div>
+      <button type="button" class="menu-btn" id="secretWatchDb">觀看資料庫</button>
+      <button type="button" class="menu-btn" id="secretExitApp" style="display:none;">關閉程式</button>
+      <button type="button" class="menu-btn menu-btn--danger" id="secretShutdown">關機</button>
+      <button type="button" class="menu-btn menu-btn--ghost" id="secretMenuClose">關閉</button>
+    </div>
+  </div>
+
+  <div id="dbView" class="db-view" aria-label="觀看資料庫">
+    <div class="db-view__toolbar">
+      <h1 class="db-view__title">觀看資料庫</h1>
+      <button type="button" class="db-view__close" id="dbViewClose">關閉</button>
+    </div>
+    <div class="db-view__content">
+      <aside class="db-view__sidebar">
+        <label class="db-view__label" for="dbViewDate">選擇日期</label>
+        <input id="dbViewDate" type="date" class="db-view__date-input" />
+        <div class="db-view__range-btns">
+          <button type="button" class="range-btn active" data-range="day">日報表</button>
+          <button type="button" class="range-btn" data-range="week">周報表</button>
+          <button type="button" class="range-btn" data-range="month">月報表</button>
+        </div>
+        <div class="db-view__totals">
+          <div class="total-row">
+            <span class="total-label">列印總張數</span>
+            <span class="total-value" id="dbTotalPrint">0</span>
+          </div>
+          <div class="total-row total-row--test">
+            <span class="total-label">測試總張數</span>
+            <span class="total-value" id="dbTotalTest">0</span>
+          </div>
+        </div>
+      </aside>
+      <main class="db-view__main">
+        <p id="dbViewError" class="db-view__error" style="display:none;"></p>
+        <p id="dbViewLoading" class="db-view__loading" style="display:none;">載入中…</p>
+        <div class="db-view__table-scroll">
+          <table class="db-view__table">
+            <thead>
+              <tr>
+                <th>流水序號</th>
+                <th>日期</th>
+                <th>時間</th>
+                <th>是否為測試</th>
+                <th>收取金額</th>
+                <th>列印數量</th>
+                <th>備註</th>
+              </tr>
+            </thead>
+            <tbody id="dbViewBody"></tbody>
+          </table>
+        </div>
+      </main>
     </div>
   </div>
 
@@ -316,41 +966,312 @@
     const inputEl = document.querySelector("#input");
     const errEl = document.querySelector("#err");
 
-    // 由 C# 注入的背景圖 data URL（避免 WebView2 阻擋 file:// 載入）
-    window.__CARRIER_BACKGROUND_DATA_URL__ = null;
-    window.__CARRIER_BACKGROUND_URLS__ = null;
-    window.__CARRIER_ACTUAL_BACKGROUND_URLS__ = null;
-    window.__TITAN_BACKGROUND_URLS__ = null;
+    // 圖片改由 https://app.local/ 直接讀取本機檔案（WebView2 虛擬網域，無需預載 base64）
+    window.__ALLOW_BACK_TEMPLATE_SELECTION__ = true;
+    window.__PRINT_CARRIER_ON_BACK__ = true;
+    window.__PRINT_CARRIER_BARCODE_ENABLED__ = true;
+    window.__SAVE_PRINT_IMAGE__ = true;
+    window.__BILL_ACCEPTOR_ENABLED__ = true;
+    window.__CARRIER_LAYOUT_CONFIG__ = null;
+
+    var templateSelectorsReady = false;
+
+    function ensureTemplateSelectorsReady() {
+      if (templateSelectorsReady) return;
+      templateSelectorsReady = true;
+      renderTemplateSelectors();
+      bindTemplateClickHandlers();
+      syncTemplateUI();
+    }
+
+    function enterTemplateStepAfterGenerate() {
+      showStep("template");
+      selectedFrontTemplate = 1;
+      selectedBackTemplate = 1;
+      activeLandscapeStorageKey = selectedFrontTemplate;
+      syncLandscapeUIFromKey(activeLandscapeStorageKey);
+      setPreviewCardSide(false);
+      ensureTemplateSelectorsReady();
+      syncTemplateUI();
+      renderPreview(selectedFrontTemplate, selectedBackTemplate);
+    }
+    var currentStep = "idle";
+    var printPageReturnTimer = null;
+    const PRINT_PAGE_DURATION_MS = 40000;
+    var paidAccumulated = 0;
+    var billAcceptorEnabled = true;
+    var kioskEnabled = true;
+    /** 本次流程是否為測試（雙擊空白鍵／無紙鈔機點擊進入） */
+    var sessionIsTest = false;
+    var idleSpaceTapCount = 0;
+    var idleSpaceLastAt = 0;
+    var IDLE_SPACE_RESET_MS = 600;
+
+    var IDLE_CAROUSEL_INTERVAL_MS = 5000;
+    var idleCarouselTimer = null;
+    var idleCarouselIndex = 0;
+
+    function syncIdleCarouselSlide() {
+      var slides = document.querySelectorAll("#step0 .idle-carousel__slide");
+      slides.forEach(function(slide, i) {
+        slide.classList.toggle("is-active", i === idleCarouselIndex);
+      });
+    }
+
+    function startIdleCarousel() {
+      stopIdleCarousel();
+      var slides = document.querySelectorAll("#step0 .idle-carousel__slide");
+      if (!slides.length) return;
+      idleCarouselIndex = 0;
+      syncIdleCarouselSlide();
+      if (slides.length <= 1) return;
+      idleCarouselTimer = setInterval(function() {
+        idleCarouselIndex = (idleCarouselIndex + 1) % slides.length;
+        syncIdleCarouselSlide();
+      }, IDLE_CAROUSEL_INTERVAL_MS);
+    }
+
+    function stopIdleCarousel() {
+      if (idleCarouselTimer != null) {
+        clearInterval(idleCarouselTimer);
+        idleCarouselTimer = null;
+      }
+    }
+
+    function postHostEvent(payload) {
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage(JSON.stringify(payload));
+      }
+    }
+
+    function handlePaidAmount(amount) {
+      if (amount <= 0 || currentStep !== "idle") return;
+      paidAccumulated += amount;
+      if (paidAccumulated >= 100) {
+        paidAccumulated -= 100;
+        setTimeout(function() { goToCarrierInput(false); }, 1000);
+      }
+    }
+
+    function syncBillAcceptorState() {
+      if (!billAcceptorEnabled) {
+        postHostEvent({ "@event": "bill_acceptor_control", enabled: false });
+        return;
+      }
+      postHostEvent({ "@event": "bill_acceptor_control", enabled: currentStep === "idle" });
+    }
+
+    function showStep(step) {
+      currentStep = step;
+      if (step !== "idle") {
+        idleSpaceTapCount = 0;
+        idleSpaceLastAt = 0;
+        stopIdleCarousel();
+      }
+      document.getElementById("step0").style.display = step === "idle" ? "block" : "none";
+      document.getElementById("step1").style.display = step === "input" ? "block" : "none";
+      document.getElementById("stepPrint").style.display = step === "print" ? "block" : "none";
+      document.getElementById("step2").style.display = step === "template" ? "flex" : "none";
+
+      var idleScreen = document.getElementById("step0");
+      if (idleScreen) {
+        idleScreen.classList.toggle("is-click-to-start", !billAcceptorEnabled);
+      }
+
+      syncBillAcceptorState();
+      if (step === "idle") startIdleCarousel();
+      if (step === "input") focusCarrierInput();
+    }
+
+    function goToCarrierInput(asTest) {
+      sessionIsTest = !!asTest;
+      if (sessionIsTest) {
+        callHost("log_payment", { amount: 100, isTest: true }).catch(function() {});
+      }
+      showStep("input");
+    }
+
+    function isIdleBypassBlocked() {
+      var overlay = document.getElementById("secretOverlay");
+      if (overlay && overlay.style.display === "flex") return true;
+      var dbView = document.getElementById("dbView");
+      if (dbView && dbView.classList.contains("is-open")) return true;
+      return false;
+    }
+
+    document.addEventListener("keydown", function(e) {
+      if (currentStep !== "idle" || isIdleBypassBlocked()) return;
+      if (e.key !== " " && e.code !== "Space") return;
+      if (e.repeat) return;
+
+      e.preventDefault();
+      var now = Date.now();
+      if (idleSpaceLastAt && now - idleSpaceLastAt > IDLE_SPACE_RESET_MS) {
+        idleSpaceTapCount = 0;
+      }
+      idleSpaceLastAt = now;
+      idleSpaceTapCount += 1;
+      if (idleSpaceTapCount >= 2) {
+        idleSpaceTapCount = 0;
+        idleSpaceLastAt = 0;
+        goToCarrierInput(true);
+      }
+    }, true);
+
+    function clearPrintPageReturnTimer() {
+      if (printPageReturnTimer) {
+        clearTimeout(printPageReturnTimer);
+        printPageReturnTimer = null;
+      }
+    }
+
+    function enterPrintPage() {
+      clearPrintPageReturnTimer();
+      showStep("print");
+      printPageReturnTimer = setTimeout(function() {
+        printPageReturnTimer = null;
+        resetSessionToIdle();
+      }, PRINT_PAGE_DURATION_MS);
+    }
+
+    function resetSessionToIdle() {
+      clearPrintPageReturnTimer();
+      keyboard.clearInput();
+      keyboardSyncedValue = "";
+      inputEl.value = "";
+      clearErr();
+      document.querySelector("#barcode").innerHTML = "";
+      setPreviewCardSide(false);
+      sessionIsTest = false;
+      showStep("idle");
+    }
+
     if (window.chrome && window.chrome.webview) {
       window.chrome.webview.addEventListener("message", function(e) {
         var d = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
         if (!d) return;
-        if (d.type === "setBackgroundImage" && d.dataUrl) {
-          window.__CARRIER_BACKGROUND_DATA_URL__ = d.dataUrl;
+        var eventType = d["@event"] || d.event;
+        if (eventType === "paid") {
+          var amount = typeof d.amount === "number" ? d.amount : Number(d.amount) || 0;
+          handlePaidAmount(amount);
+          return;
         }
-        if (d.type === "setBackgroundImages" && Array.isArray(d.dataUrls)) {
-          window.__CARRIER_BACKGROUND_URLS__ = d.dataUrls;
-          document.querySelectorAll(".card-option").forEach(function(el, i) {
-            if (d.dataUrls[i]) el.src = d.dataUrls[i];
-          });
+        if (d.type === "setCarrierTemplateOptions") {
+          if (typeof d.allowBackTemplateSelection === "boolean") {
+            window.__ALLOW_BACK_TEMPLATE_SELECTION__ = d.allowBackTemplateSelection;
+          }
+          if (typeof d.printBarcodeOnBack === "boolean") {
+            window.__PRINT_CARRIER_ON_BACK__ = d.printBarcodeOnBack;
+          }
+          if (typeof d.printBarcodeEnabled === "boolean") {
+            window.__PRINT_CARRIER_BARCODE_ENABLED__ = d.printBarcodeEnabled;
+          }
+          syncBackTemplatePanelVisibility();
+          syncTemplateUI();
         }
-        if (d.type === "setActualBackgroundImages" && Array.isArray(d.dataUrls)) {
-          window.__CARRIER_ACTUAL_BACKGROUND_URLS__ = d.dataUrls;
+        if (d.type === "setCarrierLayoutConfig" && d.config) {
+          window.__CARRIER_LAYOUT_CONFIG__ = d.config;
+          if (typeof applyCarrierLayoutDefaults === "function") {
+            applyCarrierLayoutDefaults();
+          }
         }
-        if (d.type === "setTitanBackgroundImages" && Array.isArray(d.dataUrls)) {
-          window.__TITAN_BACKGROUND_URLS__ = d.dataUrls;
+        if (d.type === "setCarrierUiOptions") {
+          if (typeof d.showDuplexFlipCompensation === "boolean") {
+            window.__SHOW_DUPLEX_FLIP_COMPENSATION__ = d.showDuplexFlipCompensation;
+          }
+          if (typeof syncDuplexFlipCompensationVisibility === "function") {
+            syncDuplexFlipCompensationVisibility();
+          }
+        }
+        if (d.type === "setPrintSaveOptions" && typeof d.savePrintImage === "boolean") {
+          window.__SAVE_PRINT_IMAGE__ = d.savePrintImage;
+        }
+        if (d.type === "setBillAcceptorConfig") {
+          billAcceptorEnabled = d.enabled !== false;
+          window.__BILL_ACCEPTOR_ENABLED__ = billAcceptorEnabled;
+          var idlePanel = document.getElementById("step0");
+          if (idlePanel) {
+            idlePanel.classList.toggle("is-click-to-start", !billAcceptorEnabled);
+          }
+          syncBillAcceptorState();
+        }
+        if (d.type === "setKioskConfig" && typeof d.kioskEnabled === "boolean") {
+          kioskEnabled = d.kioskEnabled;
+          if (typeof syncSecretExitAppVisibility === "function") {
+            syncSecretExitAppVisibility();
+          }
         }
       });
     }
 
-    let selectedTemplate = 1;
+    document.getElementById("step0").addEventListener("click", function() {
+      if (billAcceptorEnabled) return;
+      goToCarrierInput(true);
+    });
+
+    window.__simulatePaid = handlePaidAmount;
+
+    let selectedFrontTemplate = 1;
+    let selectedBackTemplate = 1;
     let previewShowingBack = false;
-    /** 樣式 1～4 與 001 列印各自儲存：'auto'|'landscape'|'portrait' */
-    const printLandscapeByTemplate = { 1: "auto", 2: "auto", 3: "auto", 4: "auto", img001: "auto", giant0102: "auto" };
-    /** 目前畫面上「圖檔方向」對應的儲存鍵：1～4 或 'img001' 或 'giant0102' */
+    const TEMPLATE_COUNT = 12;
+    /** 樣式 1～12 與 001 列印各自儲存：'auto'|'landscape'|'portrait' */
+    const printLandscapeByTemplate = Object.assign(
+      Object.fromEntries(Array.from({ length: TEMPLATE_COUNT }, function(_, i) { return [i + 1, "auto"]; })),
+      { img001: "auto", giant0102: "auto" }
+    );
+    /** 目前畫面上「圖檔方向」對應的儲存鍵：1～12 或 'img001' 或 'giant0102' */
     let activeLandscapeStorageKey = 1;
 
+    function normalizeDuplexFlipCompensationValue(value) {
+      var v = String(value || "").trim().toLowerCase();
+      if (v === "auto" || v === "landscape" || v === "portrait") return v;
+      return null;
+    }
+
+    function normalizePrintDuplexValue(value) {
+      var v = String(value || "").trim().toLowerCase();
+      if (v === "duplex" || v === "double" || v === "雙面") return "duplex";
+      if (v === "simplex" || v === "single" || v === "單面") return "simplex";
+      return null;
+    }
+
+    function syncPrintDuplexUIFromConfig() {
+      var cfg = window.__CARRIER_LAYOUT_CONFIG__;
+      var mode = normalizePrintDuplexValue(cfg && cfg.defaultPrintDuplex) || "simplex";
+      document.querySelectorAll('input[name="printDuplex"]').forEach(function(r) {
+        r.checked = r.value === mode;
+      });
+    }
+
+    function isDuplexPrintSelected() {
+      return (document.querySelector('input[name="printDuplex"]:checked')?.value === "duplex");
+    }
+
+    function applyCarrierLayoutDefaults() {
+      applyDuplexFlipCompensationDefaults();
+      syncPrintDuplexUIFromConfig();
+    }
+
+    function applyDuplexFlipCompensationDefaults() {
+      var cfg = window.__CARRIER_LAYOUT_CONFIG__;
+      var fallback = normalizeDuplexFlipCompensationValue(cfg && cfg.defaultDuplexFlipCompensation) || "auto";
+      Array.from({ length: TEMPLATE_COUNT }, function(_, i) { return i + 1; }).concat(["img001", "giant0102"]).forEach(function(key) {
+        printLandscapeByTemplate[key] = fallback;
+      });
+      syncLandscapeUIFromKey(activeLandscapeStorageKey);
+    }
+
+    function syncDuplexFlipCompensationVisibility() {
+      var show = window.__SHOW_DUPLEX_FLIP_COMPENSATION__ !== false;
+      ["printWhatHint", "printWhatOptions", "printDuplexHint", "printDuplexOptions", "duplexFlipCompHint", "duplexFlipCompOptions"].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.style.display = show ? "" : "none";
+      });
+    }
+
     function flushLandscapeToStorageKey(key) {
+      if (window.__SHOW_DUPLEX_FLIP_COMPENSATION__ === false) return;
       const el = document.querySelector('input[name="printLandscapeAnnot"]:checked');
       if (el) printLandscapeByTemplate[key] = el.value;
     }
@@ -366,6 +1287,23 @@
       flushLandscapeToStorageKey(activeLandscapeStorageKey);
       activeLandscapeStorageKey = newKey;
       syncLandscapeUIFromKey(activeLandscapeStorageKey);
+    }
+
+    function syncTemplateUI() {
+      if (!window.__ALLOW_BACK_TEMPLATE_SELECTION__) {
+        selectedBackTemplate = selectedFrontTemplate;
+      }
+      var frontEls = document.querySelectorAll("#frontTemplateSelector .card-option");
+      frontEls.forEach(function(el) {
+        var t = parseInt(el.getAttribute("data-template") || "1", 10);
+        el.classList.toggle("selected", t === selectedFrontTemplate);
+      });
+
+      var backEls = document.querySelectorAll("#backTemplateSelector .card-option");
+      backEls.forEach(function(el) {
+        var t = parseInt(el.getAttribute("data-template") || "1", 10);
+        el.classList.toggle("selected", t === selectedBackTemplate);
+      });
     }
 
     // 手機條碼載具：總長 8（/ + 7）
@@ -398,14 +1336,28 @@
     }
 
     function isStep1Visible() {
-      var step1 = document.getElementById("step1");
-      return step1 && step1.style.display !== "none";
+      return currentStep === "input";
+    }
+
+    var keyboardSyncedValue = "";
+
+    /** 僅在值真的改變時才呼叫 setInput，避免 simple-keyboard 整排重繪造成卡頓 */
+    function syncKeyboardInput(value) {
+      var fixed = normalize(value);
+      if (fixed === keyboardSyncedValue) return fixed;
+      keyboardSyncedValue = fixed;
+      keyboard.setInput(fixed);
+      return fixed;
+    }
+
+    function isInsideSimpleKeyboard(el) {
+      return !!(el && el.closest && el.closest(".simple-keyboard"));
     }
 
     /** 確保載具欄位取得鍵盤／掃描器輸入，並與螢幕鍵盤同步 */
     function focusCarrierInput() {
-      inputEl.focus();
-      keyboard.setInput(normalize(inputEl.value));
+      try { inputEl.focus({ preventScroll: true }); } catch (_) { inputEl.focus(); }
+      syncKeyboardInput(inputEl.value);
     }
 
     /**
@@ -418,77 +1370,130 @@
         if (!isStep1Visible()) return;
         if (e.ctrlKey || e.altKey || e.metaKey) return;
         if (e.target === inputEl) return;
+        if (isInsideSimpleKeyboard(e.target)) return;
 
         var key = e.key;
         if (key === "Enter") {
           e.preventDefault();
-          focusCarrierInput();
           generate();
           return;
         }
 
         if (key === "Backspace") {
           e.preventDefault();
-          focusCarrierInput();
           var cut = normalize(inputEl.value.slice(0, -1));
           inputEl.value = cut;
-          keyboard.setInput(cut);
+          syncKeyboardInput(cut);
           return;
         }
 
         if (key.length === 1 && /[A-Za-z0-9+\-\.\/]/.test(key)) {
           e.preventDefault();
-          focusCarrierInput();
           var next = normalize(inputEl.value + key);
           inputEl.value = next;
-          keyboard.setInput(next);
+          syncKeyboardInput(next);
           clearErr();
         }
       },
       true
     );
 
+    // 條碼下方字串水平位移（像素，負值往左）
+    const CARRIER_BARCODE_TEXT_OFFSET_X = -3;
+
     function renderBarcode(carrier) {
       const svg = document.querySelector("#barcode");
-      svg.innerHTML = "";
-      JsBarcode("#barcode", carrier, {
+      if (!svg) return;
+      svg.replaceChildren();
+      if (window.__PRINT_CARRIER_BARCODE_ENABLED__ === false) return;
+      JsBarcode(svg, carrier, {
         format: "CODE39",
-        width: 3,
-        height: 90,
-        margin: 8,
+        width: 2,
+        height: 70,
+        // 巨人 height: 70,
+        // 巨人2 height: 90,
+        // 布丁狗 height: 80,
+        margin: 6,
         displayValue: true,
-        fontSize: 18,
-        textMargin: 6,
-        background: "transparent",   // 條碼背景透明
-        lineColor: "#000000"         // 條碼線條維持黑色
+        fontSize: 15,
+        // 布丁狗 fontSize: 15,
+        // 巨人2 fontSize: 13,
+        textMargin: 0,
+        background: "transparent",
+        lineColor: "#000000"
       });
+
+      if (CARRIER_BARCODE_TEXT_OFFSET_X !== 0) {
+        var textEl = svg.querySelector("text");
+        if (textEl) {
+          var x = parseFloat(textEl.getAttribute("x") || "0");
+          if (!isNaN(x)) {
+            textEl.setAttribute("x", String(x + CARRIER_BARCODE_TEXT_OFFSET_X));
+          }
+        }
+      }
     }
 
-    // 預覽用背景：載具背景1~4
-    function getPreviewBackgroundUrlForTemplate(idx) {
-      var urls = window.__CARRIER_BACKGROUND_URLS__;
-      if (urls && urls[idx - 1]) return urls[idx - 1];
-      if (idx === 1 && window.__CARRIER_BACKGROUND_DATA_URL__) return window.__CARRIER_BACKGROUND_DATA_URL__;
-      var base = location.href.substring(0, location.href.lastIndexOf("/") + 1);
-      return base + "picture/載具背景" + idx + ".png";
+    const FRONT_TEMPLATE_IMAGES = Array.from({ length: TEMPLATE_COUNT }, function(_, i) {
+      return "picture/head/" + (i + 1) + ".jpg";
+    });
+    const BACK_TEMPLATE_IMAGES = Array.from({ length: TEMPLATE_COUNT }, function(_, i) {
+      return "picture/back/" + (i + 1) + ".jpg";
+    });
+
+    function getFrontTemplateImagePath(idx) {
+      return FRONT_TEMPLATE_IMAGES[idx - 1] || FRONT_TEMPLATE_IMAGES[0];
     }
 
-    // 實際合成與列印用背景：實際背景1~4
-    function getActualBackgroundUrlForTemplate(idx) {
-      var urls = window.__CARRIER_ACTUAL_BACKGROUND_URLS__;
-      if (urls && urls[idx - 1]) return urls[idx - 1];
-      var base = location.href.substring(0, location.href.lastIndexOf("/") + 1);
-      return base + "picture/實際背景" + idx + ".png";
+    function getBackTemplateImagePath(idx) {
+      return BACK_TEMPLATE_IMAGES[idx - 1] || BACK_TEMPLATE_IMAGES[0];
     }
 
-    function getBackgroundUrl() {
-      // 列印與下載時改用「實際背景」圖片（實際背景1~4.png）
-      return getActualBackgroundUrlForTemplate(selectedTemplate);
+    function syncBackTemplatePanelVisibility() {
+      var backPanel = document.getElementById("backTemplatePanel");
+      var allowBackTemplateSelection = !!window.__ALLOW_BACK_TEMPLATE_SELECTION__;
+      if (backPanel) {
+        backPanel.style.display = allowBackTemplateSelection ? "" : "none";
+      }
+      if (!allowBackTemplateSelection) {
+        selectedBackTemplate = selectedFrontTemplate;
+      }
+    }
+
+    function renderTemplateSelectors() {
+      var frontSelector = document.getElementById("frontTemplateSelector");
+      var backSelector = document.getElementById("backTemplateSelector");
+      if (!frontSelector || !backSelector) return;
+
+      frontSelector.innerHTML = FRONT_TEMPLATE_IMAGES.map(function(path, i) {
+        var src = toAbsoluteAssetUrl(path);
+        return '<img class="card-option" data-template="' + (i + 1) + '" alt="正面樣式' + (i + 1) + '" src="' + src + '" loading="eager" decoding="async" />';
+      }).join("");
+      backSelector.innerHTML = BACK_TEMPLATE_IMAGES.map(function(path, i) {
+        var src = toAbsoluteAssetUrl(path);
+        return '<img class="card-option" data-template="' + (i + 1) + '" alt="背面樣式' + (i + 1) + '" src="' + src + '" loading="eager" decoding="async" />';
+      }).join("");
+
+      syncBackTemplatePanelVisibility();
+    }
+
+    function getPreviewFrontBackgroundUrlForTemplate(idx) {
+      return toAbsoluteAssetUrl(getFrontTemplateImagePath(idx));
+    }
+
+    function getPreviewBackBackgroundUrlForTemplate(idx) {
+      return toAbsoluteAssetUrl(getBackTemplateImagePath(idx));
+    }
+
+    function getPrintFrontBackgroundUrlForTemplate(idx) {
+      return toAbsoluteAssetUrl(getFrontTemplateImagePath(idx));
+    }
+
+    function getPrintBackBackgroundUrlForTemplate(idx) {
+      return toAbsoluteAssetUrl(getBackTemplateImagePath(idx));
     }
 
     function getTitanBackgroundUrl(idx) {
-      var urls = window.__TITAN_BACKGROUND_URLS__;
-      if (urls && urls[idx - 1]) return urls[idx - 1];
       return idx === 1 ? toAbsoluteAssetUrl("picture/titan01.jpg") : toAbsoluteAssetUrl("picture/titan02.jpg");
     }
 
@@ -503,9 +1508,37 @@
     }
 
     function normalizeBackgroundInput(urlOrRelativePath) {
-      var v = String(urlOrRelativePath || "");
-      if (v.startsWith("data:")) return v;
-      return toAbsoluteAssetUrl(v);
+      return toAbsoluteAssetUrl(urlOrRelativePath);
+    }
+
+    const DEFAULT_PREVIEW_BARCODE_X = 102;
+    const DEFAULT_PREVIEW_BARCODE_Y = 409;
+    const DEFAULT_PRINT_BARCODE_X = 104;
+    const DEFAULT_PRINT_BARCODE_Y = 419;
+
+    function getBarcodePosFromLayout(templateIndex, side, kind) {
+      const layout = window.__CARRIER_LAYOUT_CONFIG__;
+      const templateKey = String(templateIndex);
+      const t = layout && layout.templates ? layout.templates[templateKey] : null;
+      const s = t ? (side === "front" ? t.front : t.back) : null;
+
+      const fallback = kind === "preview"
+        ? { x: DEFAULT_PREVIEW_BARCODE_X, y: DEFAULT_PREVIEW_BARCODE_Y }
+        : { x: DEFAULT_PRINT_BARCODE_X, y: DEFAULT_PRINT_BARCODE_Y };
+
+      if (!s) return fallback;
+
+      if (kind === "preview") {
+        return {
+          x: (s.previewBarcodeX ?? s.printBarcodeX ?? fallback.x),
+          y: (s.previewBarcodeY ?? s.printBarcodeY ?? fallback.y)
+        };
+      }
+
+      return {
+        x: (s.printBarcodeX ?? s.previewBarcodeX ?? fallback.x),
+        y: (s.printBarcodeY ?? s.previewBarcodeY ?? fallback.y)
+      };
     }
 
     /**
@@ -527,52 +1560,62 @@
       return out;
     }
 
-    function getBackPreviewBackgroundUrlForTemplate(idx) {
-      var urls = window.__CARRIER_ACTUAL_BACKGROUND_URLS__;
-      if (urls && urls[idx - 1]) return urls[idx - 1];
-      return getPreviewBackgroundUrlForTemplate(idx);
-    }
-
-    function drawPreviewCanvas(canvas, loadedBg, loadedBarcode, barcodeX, barcodeY, widthPlus, heightPlus) {
+    function drawPreviewCanvas(canvas, loadedBg, loadedBarcode, includeCarrier, barcodeX, barcodeY, widthPlus, heightPlus) {
       canvas.width = loadedBg.width;
       canvas.height = loadedBg.height;
       var ctx = canvas.getContext("2d");
       ctx.drawImage(loadedBg, 0, 0, loadedBg.width, loadedBg.height);
-      var baseWidth = loadedBg.width * 0.6;
-      var baseScale = baseWidth / loadedBarcode.width;
-      var baseHeight = loadedBarcode.height * baseScale;
-      var targetWidth = baseWidth + widthPlus;
-      var targetHeight = baseHeight + heightPlus;
-      ctx.drawImage(loadedBarcode, barcodeX, barcodeY, targetWidth, targetHeight);
+      if (includeCarrier && loadedBarcode) {
+        var baseWidth = loadedBg.width * 0.51;
+        // 巨人 baseWidth = loadedBg.width * 0.52;
+        // 巨人2 baseWidth = loadedBg.width * 0.4;
+        // 布丁狗 baseWidth = loadedBg.width * 0.55;
+        var baseScale = baseWidth / loadedBarcode.width;
+        var baseHeight = loadedBarcode.height * baseScale;
+        var targetWidth = baseWidth + widthPlus;
+        var targetHeight = baseHeight + heightPlus;
+        ctx.drawImage(loadedBarcode, barcodeX, barcodeY, targetWidth, targetHeight);
+      }
     }
 
-    function renderPreview(templateIndex) {
+    function renderPreview(frontTemplateIndex, backTemplateIndex) {
       var svg = document.querySelector("#barcode");
-      if (!svg || !svg.outerHTML || svg.innerHTML.trim() === "") return;
+      if (!svg) return;
 
-      var frontBgUrl = getPreviewBackgroundUrlForTemplate(templateIndex);
-      var backBgUrl = getBackPreviewBackgroundUrlForTemplate(templateIndex);
+      var frontBgUrl = getPreviewFrontBackgroundUrlForTemplate(frontTemplateIndex);
+      var backBgUrl = getPreviewBackBackgroundUrlForTemplate(backTemplateIndex);
       var frontBgImg = new Image();
       var backBgImg = new Image();
-      var barcodeImg = new Image();
-      var svgData = new XMLSerializer().serializeToString(svg);
-      var svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-      var svgUrl = URL.createObjectURL(svgBlob);
-      barcodeImg.src = svgUrl;
+      var barcodeEnabled = window.__PRINT_CARRIER_BARCODE_ENABLED__ !== false;
+      var barcodeImg = barcodeEnabled ? new Image() : null;
+      var svgUrl = null;
+      if (barcodeEnabled && svg.outerHTML && svg.innerHTML.trim() !== "") {
+        var svgData = new XMLSerializer().serializeToString(svg);
+        var svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+        svgUrl = URL.createObjectURL(svgBlob);
+        barcodeImg.src = svgUrl;
+      }
 
-      Promise.all([
+      var loaders = [
         new Promise(function(resolve, reject) { frontBgImg.onload = function() { resolve(frontBgImg); }; frontBgImg.onerror = function() { reject(); }; frontBgImg.src = frontBgUrl; }),
-        new Promise(function(resolve, reject) { backBgImg.onload = function() { resolve(backBgImg); }; backBgImg.onerror = function() { reject(); }; backBgImg.src = backBgUrl; }),
-        new Promise(function(resolve, reject) { barcodeImg.onload = function() { resolve(barcodeImg); }; barcodeImg.onerror = function() { reject(); }; barcodeImg.src = svgUrl; })
-      ]).then(function(imgs) {
+        new Promise(function(resolve, reject) { backBgImg.onload = function() { resolve(backBgImg); }; backBgImg.onerror = function() { reject(); }; backBgImg.src = backBgUrl; })
+      ];
+      if (barcodeEnabled && barcodeImg && svgUrl) {
+        loaders.push(new Promise(function(resolve, reject) { barcodeImg.onload = function() { resolve(barcodeImg); }; barcodeImg.onerror = function() { reject(); }; barcodeImg.src = svgUrl; }));
+      }
+
+      Promise.all(loaders).then(function(imgs) {
         var loadedFrontBg = imgs[0];
         var loadedBackBg = imgs[1];
-        var loadedBarcode = imgs[2];
+        var loadedBarcode = (barcodeEnabled && imgs.length >= 3) ? imgs[2] : null;
         var frontCanvas = document.getElementById("previewFrontCanvas");
         var backCanvas = document.getElementById("previewBackCanvas");
 
-        drawPreviewCanvas(frontCanvas, loadedFrontBg, loadedBarcode, 102, 409, 346, 77);
-        drawPreviewCanvas(backCanvas, loadedBackBg, loadedBarcode, 102, 409, 346, 77);
+        var frontPos = getBarcodePosFromLayout(frontTemplateIndex, "front", "preview");
+        var backPos = getBarcodePosFromLayout(backTemplateIndex, "back", "preview");
+
+        drawPreviewCanvas(frontCanvas, loadedFrontBg, loadedBarcode, barcodeEnabled, frontPos.x, frontPos.y, 0, 0);
+        drawPreviewCanvas(backCanvas, loadedBackBg, loadedBarcode, barcodeEnabled && !!window.__PRINT_CARRIER_ON_BACK__, backPos.x, backPos.y, 0, 0);
       }).catch(function(err) {
         alert("背景圖片載入失敗，無法產生預覽。");
         console.error(err);
@@ -623,16 +1666,25 @@
 
     /** 將列印資料送給 WinForms（WebView2）；若在瀏覽器開 HTML 則無法列印到 HiTi。 */
     /** @returns {boolean|undefined} true=橫版 false=直版 undefined=自動（不傳 isLandscape） */
-    function getIsLandscapeAnnotation() {
-      flushLandscapeToStorageKey(activeLandscapeStorageKey);
-      const v = printLandscapeByTemplate[activeLandscapeStorageKey] || "auto";
+    function getIsLandscapeAnnotationForTemplateKey(templateKey) {
+      const v = printLandscapeByTemplate[templateKey] || "auto";
       if (v === "landscape") return true;
       if (v === "portrait") return false;
       return undefined;
     }
 
-    function postCarrierImageToHost(payload) {
-      const ann = getIsLandscapeAnnotation();
+    function getIsLandscapeAnnotation() {
+      flushLandscapeToStorageKey(activeLandscapeStorageKey);
+      return getIsLandscapeAnnotationForTemplateKey(activeLandscapeStorageKey);
+    }
+
+    function postCarrierImageToHost(payload, isLandscapeOverride) {
+      // 先把目前 UI 選項寫回對應模板（因為可能有尚未切換 template 而尚未 flush）
+      flushLandscapeToStorageKey(activeLandscapeStorageKey);
+
+      const ann = (arguments.length >= 2)
+        ? isLandscapeOverride
+        : getIsLandscapeAnnotationForTemplateKey(activeLandscapeStorageKey);
       if (ann !== undefined) payload.isLandscape = ann;
       if (window.chrome && window.chrome.webview) {
         window.chrome.webview.postMessage(payload);
@@ -648,23 +1700,28 @@
 
     function downloadWithBackground(filename = "carrier-with-background.png", duplex = false) {
       const svg = document.querySelector("#barcode");
-      if (!svg || !svg.outerHTML || svg.innerHTML.trim() === "") return false;
+      if (!svg) return false;
 
-      const backgroundUrl = getBackgroundUrl();
-      const bgImg = new Image();
-      const barcodeImg = new Image();
+      // 單面：picture/head（正面樣式）；雙面：正面 head、背面 picture/back
+      const frontBackgroundUrl = getPrintFrontBackgroundUrlForTemplate(selectedFrontTemplate);
+      const backBackgroundUrl = duplex ? getPrintBackBackgroundUrlForTemplate(selectedBackTemplate) : null;
 
-      const svgData = new XMLSerializer().serializeToString(svg);
-      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-      const svgUrl = URL.createObjectURL(svgBlob);
+      const barcodeEnabled = window.__PRINT_CARRIER_BARCODE_ENABLED__ !== false;
+      const barcodeImg = barcodeEnabled ? new Image() : null;
+      const svgUrl = (barcodeEnabled && svg.outerHTML && svg.innerHTML.trim() !== "")
+        ? URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)], { type: "image/svg+xml;charset=utf-8" }))
+        : null;
 
-      // 使用 Promise.all 確保兩張圖都載入後再繪製，避免競爭危害
-      Promise.all([
-        new Promise(function(resolve, reject) { bgImg.onload = function() { resolve(bgImg); }; bgImg.onerror = function() { reject(new Error("bg load fail")); }; bgImg.src = backgroundUrl; }),
-        new Promise(function(resolve, reject) { barcodeImg.onload = function() { resolve(barcodeImg); }; barcodeImg.onerror = function() { reject(new Error("barcode load fail")); }; barcodeImg.src = svgUrl; })
-      ]).then(function(imgs) {
-        var loadedBg = imgs[0];
-        var loadedBarcode = imgs[1];
+      function loadImage(url) {
+        return new Promise(function(resolve, reject) {
+          const img = new Image();
+          img.onload = function() { resolve(img); };
+          img.onerror = function() { reject(new Error("img load fail: " + url)); };
+          img.src = url;
+        });
+      }
+
+      function composeOneSide(loadedBg, loadedBarcode, side, templateIndex, includeCarrier) {
         const canvas = document.createElement("canvas");
         canvas.width = loadedBg.width;
         canvas.height = loadedBg.height;
@@ -672,37 +1729,71 @@
 
         ctx.drawImage(loadedBg, 0, 0, loadedBg.width, loadedBg.height);
 
-        const baseWidth = loadedBg.width * 0.6;
-        const baseScale = baseWidth / loadedBarcode.width;
-        const baseHeight = loadedBarcode.height * baseScale;
-        const targetWidth = baseWidth ;
-        const targetHeight = baseHeight ;
-        const x = 104;
-        const y = 419;
+        if (includeCarrier && loadedBarcode) {
+          const baseWidth = loadedBg.width * 0.52;
+          // 巨人 baseWidth = loadedBg.width * 0.52;
+          // 巨人2 baseWidth = loadedBg.width * 0.4;
+          // 布丁狗 baseWidth = loadedBg.width * 0.55;
+          const baseScale = baseWidth / loadedBarcode.width;
+          const baseHeight = loadedBarcode.height * baseScale;
+          const targetWidth = baseWidth;
+          const targetHeight = baseHeight;
+          const pos = getBarcodePosFromLayout(templateIndex, side, "print");
+          ctx.drawImage(loadedBarcode, pos.x, pos.y, targetWidth, targetHeight);
+        }
 
-        ctx.drawImage(loadedBarcode, x, y, targetWidth, targetHeight);
+        return rotateComposite90IfWiderThanTall(canvas);
+      }
 
-        var outCanvas = rotateComposite90IfWiderThanTall(canvas);
+      var loads = [loadImage(frontBackgroundUrl)];
+      if (barcodeEnabled && svgUrl) loads.push(loadImage(svgUrl));
+      if (duplex) loads.push(loadImage(backBackgroundUrl));
 
-        const dataUrl = outCanvas.toDataURL("image/png");
-        postCarrierImageToHost({
-          type: "carrierImage",
-          fileName: filename,
-          dataUrl: dataUrl,
-          duplex: duplex
-        });
+      Promise.all(loads).then(function(imgs) {
+        const loadedFrontBg = imgs[0];
+        const loadedBarcode = (barcodeEnabled && svgUrl) ? imgs[1] : null;
+        const loadedBackBg = duplex
+          ? imgs[barcodeEnabled && svgUrl ? 2 : 1]
+          : null;
 
-        outCanvas.toBlob(function(blob) {
-          if (!blob) return;
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          URL.revokeObjectURL(url);
-        }, "image/png");
+        const frontOutCanvas = composeOneSide(loadedFrontBg, loadedBarcode, "front", selectedFrontTemplate, barcodeEnabled);
+
+        if (!duplex) {
+          postCarrierImageToHost({
+            type: "carrierImage",
+            fileName: filename,
+            dataUrl: frontOutCanvas.toDataURL("image/png"),
+            duplex: false
+          });
+        } else {
+          const frontDataUrl = frontOutCanvas.toDataURL("image/png");
+          const backOutCanvas = composeOneSide(loadedBackBg, loadedBarcode, "back", selectedBackTemplate, barcodeEnabled && !!window.__PRINT_CARRIER_ON_BACK__);
+          const backDataUrl = backOutCanvas.toDataURL("image/png");
+
+          postCarrierImageToHost({
+            type: "carrierImage",
+            fileName: filename,
+            dataUrl: frontDataUrl,
+            dataUrlBack: backDataUrl,
+            duplex: true
+          }, getIsLandscapeAnnotationForTemplateKey(selectedBackTemplate));
+
+          // duplex 時原本只下載正面圖；維持既有行為（避免使用者端流程改動）
+        }
+
+        if (window.__SAVE_PRINT_IMAGE__) {
+          frontOutCanvas.toBlob(function(blob) {
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+          }, "image/png");
+        }
       }).catch(function(err) {
         alert("背景圖片載入失敗，無法下載或列印。");
         console.error(err);
@@ -722,15 +1813,17 @@
 
           ctx.drawImage(bgImg, 0, 0, bgImg.width, bgImg.height);
 
-          const baseWidth = bgImg.width * 0.6;
-          const baseScale = baseWidth / loadedBarcode.width;
-          const baseHeight = loadedBarcode.height * baseScale;
-          const targetWidth = baseWidth;
-          const targetHeight = baseHeight;
-          const x = 416;
-          const y = 88;
+          if (loadedBarcode) {
+            const baseWidth = bgImg.width * 0.55;
+            const baseScale = baseWidth / loadedBarcode.width;
+            const baseHeight = loadedBarcode.height * baseScale;
+            const targetWidth = baseWidth;
+            const targetHeight = baseHeight;
+            const x = 416;
+            const y = 88;
 
-          ctx.drawImage(loadedBarcode, x, y, targetWidth, targetHeight);
+            ctx.drawImage(loadedBarcode, x, y, targetWidth, targetHeight);
+          }
           resolve(rotateComposite90IfWiderThanTall(canvas));
         };
         bgImg.onerror = function() { reject(new Error("bg load fail")); };
@@ -740,21 +1833,25 @@
 
     function printDuplexCompositeImages(frontBackgroundUrl, backBackgroundUrl, fileName = "carrier-duplex.png") {
       const svg = document.querySelector("#barcode");
-      if (!svg || !svg.outerHTML || svg.innerHTML.trim() === "") return false;
+      if (!svg) return false;
+      const barcodeEnabled = window.__PRINT_CARRIER_BARCODE_ENABLED__ !== false;
+      if (barcodeEnabled && (!svg.outerHTML || svg.innerHTML.trim() === "")) return false;
 
-      const barcodeImg = new Image();
-      const svgData = new XMLSerializer().serializeToString(svg);
-      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-      const svgUrl = URL.createObjectURL(svgBlob);
+      const barcodeImg = barcodeEnabled ? new Image() : null;
+      const svgUrl = (barcodeEnabled && svg.outerHTML && svg.innerHTML.trim() !== "")
+        ? URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)], { type: "image/svg+xml;charset=utf-8" }))
+        : null;
 
-      Promise.all([
-        new Promise(function(resolve, reject) {
-          barcodeImg.onload = function() { resolve(barcodeImg); };
-          barcodeImg.onerror = function() { reject(new Error("barcode load fail")); };
-          barcodeImg.src = svgUrl;
-        })
-      ]).then(function(imgs) {
-        const loadedBarcode = imgs[0];
+      (barcodeEnabled && svgUrl
+        ? Promise.all([
+            new Promise(function(resolve, reject) {
+              barcodeImg.onload = function() { resolve(barcodeImg); };
+              barcodeImg.onerror = function() { reject(new Error("barcode load fail")); };
+              barcodeImg.src = svgUrl;
+            })
+          ]).then(function(imgs) { return imgs[0]; })
+        : Promise.resolve(null)
+      ).then(function(loadedBarcode) {
         return Promise.all([
           composeCarrierCanvas(normalizeBackgroundInput(frontBackgroundUrl), loadedBarcode),
           composeCarrierCanvas(normalizeBackgroundInput(backBackgroundUrl), loadedBarcode)
@@ -794,7 +1891,7 @@
       clearErr();
       const fixed = normalize(inputEl.value);
       inputEl.value = fixed;
-      keyboard.setInput(fixed);
+      keyboardSyncedValue = fixed;
 
       if (!isValidCarrier(fixed)) {
         showErr("格式不正確：請輸入「/」+ 7 碼（A-Z、0-9、+、-、.），例如 /A1B2C.4（或直接輸入 7 碼會自動補 /）");
@@ -819,15 +1916,19 @@
       },
       display: {
         "{bksp}": "⌫",
-        "{enter}": "確定",
+        "{enter}": "顯示條碼",
         "{clear}": "清除",
         "{gen}": "下一步"
       },
 
       onChange: value => {
         const fixed = normalize(value);
-        if (fixed !== value) keyboard.setInput(fixed);
         inputEl.value = fixed;
+        if (fixed !== value) {
+          syncKeyboardInput(fixed);
+        } else {
+          keyboardSyncedValue = fixed;
+        }
       },
 
       onKeyPress: button => {
@@ -837,22 +1938,12 @@
 
         if (button === "{gen}") {
           var ok = generate();
-          if (ok) {
-            document.getElementById("step1").style.display = "none";
-            document.getElementById("step2").style.display = "block";
-            selectedTemplate = 1;
-            activeLandscapeStorageKey = 1;
-            syncLandscapeUIFromKey(1);
-            document.querySelectorAll(".card-option").forEach(function(el) {
-              el.classList.toggle("selected", el.getAttribute("data-template") === "1");
-            });
-            setPreviewCardSide(false);
-            renderPreview(1);
-          }
+          if (ok) enterTemplateStepAfterGenerate();
         }
 
         if (button === "{clear}") {
           keyboard.clearInput();
+          keyboardSyncedValue = "";
           inputEl.value = "";
           clearErr();
           document.querySelector("#barcode").innerHTML = "";
@@ -864,7 +1955,7 @@
     inputEl.addEventListener("input", (e) => {
       const fixed = normalize(e.target.value);
       if (fixed !== e.target.value) e.target.value = fixed;
-      keyboard.setInput(fixed);
+      syncKeyboardInput(fixed);
     });
 
     inputEl.addEventListener("keydown", function(e) {
@@ -875,28 +1966,51 @@
     });
 
     inputEl.addEventListener("focus", function() {
-      keyboard.setInput(normalize(inputEl.value));
+      syncKeyboardInput(inputEl.value);
     });
 
-    document.querySelectorAll(".card-option").forEach(function(el) {
-      el.addEventListener("click", function() {
-        const t = parseInt(el.getAttribute("data-template") || "1", 10);
-        const what = document.querySelector('input[name="printWhat"]:checked')?.value || "carrier";
-        if (what !== "img001" && what !== "giant0102") setLandscapeContext(t);
-        selectedTemplate = t;
-        document.querySelectorAll(".card-option").forEach(function(x) {
-          x.classList.toggle("selected", x === el);
+    function bindTemplateClickHandlers() {
+      document.querySelectorAll("#frontTemplateSelector .card-option").forEach(function(el) {
+        if (el.dataset.boundClick === "1") return;
+        el.dataset.boundClick = "1";
+        el.addEventListener("click", function() {
+          const t = parseInt(el.getAttribute("data-template") || "1", 10);
+          const what = document.querySelector('input[name="printWhat"]:checked')?.value || "carrier";
+          if (what !== "img001" && what !== "giant0102") setLandscapeContext(t);
+          selectedFrontTemplate = t;
+          if (!window.__ALLOW_BACK_TEMPLATE_SELECTION__) selectedBackTemplate = t;
+          syncTemplateUI();
+          setPreviewCardSide(false);
+          renderPreview(selectedFrontTemplate, selectedBackTemplate);
         });
-        setPreviewCardSide(false);
-        renderPreview(selectedTemplate);
       });
-    });
+
+      if (!window.__ALLOW_BACK_TEMPLATE_SELECTION__) return;
+
+      document.querySelectorAll("#backTemplateSelector .card-option").forEach(function(el) {
+        if (el.dataset.boundClick === "1") return;
+        el.dataset.boundClick = "1";
+        el.addEventListener("click", function() {
+          const t = parseInt(el.getAttribute("data-template") || "1", 10);
+          const what = document.querySelector('input[name="printWhat"]:checked')?.value || "carrier";
+          if (what !== "img001" && what !== "giant0102") setLandscapeContext(t);
+          selectedBackTemplate = t;
+          syncTemplateUI();
+          setPreviewCardSide(false);
+          renderPreview(selectedFrontTemplate, selectedBackTemplate);
+        });
+      });
+    }
 
     document.querySelectorAll('input[name="printLandscapeAnnot"]').forEach(function(r) {
       r.addEventListener("change", function() {
+        if (window.__SHOW_DUPLEX_FLIP_COMPENSATION__ === false) return;
         if (this.checked) printLandscapeByTemplate[activeLandscapeStorageKey] = this.value;
       });
     });
+
+    syncDuplexFlipCompensationVisibility();
+    applyCarrierLayoutDefaults();
 
     document.querySelectorAll('input[name="printWhat"]').forEach(function(r) {
       r.addEventListener("change", function() {
@@ -905,22 +2019,32 @@
         if (this.value === "img001" || this.value === "giant0102") {
           activeLandscapeStorageKey = this.value;
         } else {
-          activeLandscapeStorageKey = selectedTemplate;
+          activeLandscapeStorageKey = selectedFrontTemplate;
         }
         syncLandscapeUIFromKey(activeLandscapeStorageKey);
       });
     });
 
     document.getElementById("btnBack").addEventListener("click", function() {
-      document.getElementById("step2").style.display = "none";
-      document.getElementById("step1").style.display = "block";
+      showStep("input");
       setPreviewCardSide(false);
       focusCarrierInput();
     });
 
     document.getElementById("btnPrint").addEventListener("click", function() {
-      const duplex = (document.querySelector('input[name="printDuplex"]:checked')?.value === "duplex");
+      const duplex = isDuplexPrintSelected();
       const what = document.querySelector('input[name="printWhat"]:checked')?.value || "carrier";
+      var templateName = "載具樣式" + selectedFrontTemplate;
+      if (what === "img001") templateName = "001.jpg";
+      else if (what === "giant0102") templateName = "titan01-02";
+      callHost("log_print_record", {
+        templateName: templateName,
+        carrierCode: normalize(inputEl.value),
+        amount: 100,
+        copies: 1,
+        isTest: sessionIsTest
+      }).catch(function() {});
+
       if (what === "img001") {
         printRawImage("picture/001.jpg", "001.jpg", duplex);
       } else if (what === "giant0102") {
@@ -928,10 +2052,280 @@
       } else {
         downloadWithBackground("carrier-with-background.png", duplex);
       }
+      enterPrintPage();
     });
 
     initPreviewCardInteractions();
-    focusCarrierInput();
+    postHostEvent({
+      "@event": "payments_config",
+      billAcceptorEnabled: billAcceptorEnabled
+    });
+    syncBillAcceptorState();
+    initAdminSecretPanel();
+    initDbViewer();
+    showStep("idle");
+
+    function callHost(cmd, data) {
+      data = data || {};
+      var webview = window.chrome && window.chrome.webview;
+      if (!webview) {
+        return Promise.reject(new Error("目前不在 WebView2 環境"));
+      }
+
+      var id = (window.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : ("rpc-" + Date.now() + "-" + Math.random());
+
+      return new Promise(function(resolve, reject) {
+        var timer = setTimeout(function() {
+          webview.removeEventListener("message", handler);
+          reject(new Error("timeout"));
+        }, 60000);
+
+        function handler(ev) {
+          try {
+            var res = typeof ev.data === "string" ? JSON.parse(ev.data) : ev.data;
+            if (!res || res.id !== id) return;
+            clearTimeout(timer);
+            webview.removeEventListener("message", handler);
+            if (res.ok) resolve(res.data || {});
+            else reject(new Error(res.error || "unknown error"));
+          } catch (err) {
+            // ignore parse errors from other messages
+          }
+        }
+
+        webview.addEventListener("message", handler);
+        webview.postMessage(JSON.stringify({ id: id, cmd: cmd, data: data }));
+      });
+    }
+
+    function syncSecretExitAppVisibility() {
+      var btn = document.getElementById("secretExitApp");
+      if (btn) btn.style.display = kioskEnabled ? "none" : "block";
+    }
+
+    function initAdminSecretPanel() {
+      var REQUIRED_TAPS = 15;
+      var TAP_RESET_MS = 1500;
+      var PASSWORD = "9347";
+      var tapCount = 0;
+      var lastTapAt = 0;
+      var secretInput = "";
+
+      var overlay = document.getElementById("secretOverlay");
+      var keypad = document.getElementById("secretKeypad");
+      var menu = document.getElementById("secretMenu");
+      var inputDisplay = document.getElementById("secretInputDisplay");
+      var errorEl = document.getElementById("secretError");
+
+      function resetTap() {
+        tapCount = 0;
+        lastTapAt = 0;
+      }
+
+      function renderSecretInput() {
+        inputDisplay.textContent = secretInput ? "•".repeat(secretInput.length) : "____";
+      }
+
+      function openSecretMenu() {
+        resetTap();
+        secretInput = "";
+        renderSecretInput();
+        errorEl.style.display = "none";
+        errorEl.textContent = "";
+        keypad.style.display = "block";
+        menu.style.display = "none";
+        overlay.style.display = "flex";
+      }
+
+      function closeSecretMenu() {
+        overlay.style.display = "none";
+        secretInput = "";
+        renderSecretInput();
+        resetTap();
+      }
+
+      document.getElementById("secretHotspot").addEventListener("click", function(e) {
+        e.stopPropagation();
+        var now = Date.now();
+        if (lastTapAt && now - lastTapAt > TAP_RESET_MS) tapCount = 0;
+        lastTapAt = now;
+        tapCount += 1;
+        if (tapCount >= REQUIRED_TAPS) openSecretMenu();
+      });
+
+      document.querySelectorAll("#secretKeypad .key[data-digit]").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          if (secretInput.length >= 8) return;
+          secretInput += btn.getAttribute("data-digit");
+          errorEl.style.display = "none";
+          renderSecretInput();
+        });
+      });
+
+      document.getElementById("secretClear").addEventListener("click", function() {
+        secretInput = "";
+        errorEl.style.display = "none";
+        renderSecretInput();
+      });
+
+      document.getElementById("secretBackspace").addEventListener("click", function() {
+        secretInput = secretInput.slice(0, -1);
+        errorEl.style.display = "none";
+        renderSecretInput();
+      });
+
+      document.getElementById("secretCancel").addEventListener("click", closeSecretMenu);
+      document.getElementById("secretMenuClose").addEventListener("click", closeSecretMenu);
+
+      document.getElementById("secretSubmit").addEventListener("click", function() {
+        if (secretInput === PASSWORD) {
+          keypad.style.display = "none";
+          menu.style.display = "block";
+          syncSecretExitAppVisibility();
+          secretInput = "";
+          errorEl.style.display = "none";
+          renderSecretInput();
+          return;
+        }
+        errorEl.textContent = "密碼錯誤";
+        errorEl.style.display = "block";
+        secretInput = "";
+        renderSecretInput();
+      });
+
+      document.getElementById("secretWatchDb").addEventListener("click", function() {
+        closeSecretMenu();
+        openDbViewer();
+      });
+
+      document.getElementById("secretExitApp").addEventListener("click", function() {
+        if (kioskEnabled) return;
+        callHost("exit_app", {}).catch(function() {});
+      });
+
+      document.getElementById("secretShutdown").addEventListener("click", function() {
+        callHost("shutdown", {}).catch(function() {});
+      });
+
+      document.addEventListener("keydown", function(e) {
+        if (overlay.style.display !== "flex") return;
+        if (e.key === "Escape") {
+          e.preventDefault();
+          closeSecretMenu();
+          return;
+        }
+        if (keypad.style.display === "none") return;
+        if (e.key >= "0" && e.key <= "9") {
+          e.preventDefault();
+          if (secretInput.length >= 8) return;
+          secretInput += e.key;
+          errorEl.style.display = "none";
+          renderSecretInput();
+        }
+        if (e.key === "Backspace") {
+          e.preventDefault();
+          secretInput = secretInput.slice(0, -1);
+          renderSecretInput();
+        }
+        if (e.key === "Enter") {
+          e.preventDefault();
+          document.getElementById("secretSubmit").click();
+        }
+      }, true);
+    }
+
+    function initDbViewer() {
+      var dbView = document.getElementById("dbView");
+      var dbDate = document.getElementById("dbViewDate");
+      var dbBody = document.getElementById("dbViewBody");
+      var dbError = document.getElementById("dbViewError");
+      var dbLoading = document.getElementById("dbViewLoading");
+      var dbTotalPrint = document.getElementById("dbTotalPrint");
+      var dbTotalTest = document.getElementById("dbTotalTest");
+      var rangeType = "day";
+
+      function formatDateLocal(d) {
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, "0");
+        var day = String(d.getDate()).padStart(2, "0");
+        return y + "-" + m + "-" + day;
+      }
+
+      dbDate.value = formatDateLocal(new Date());
+
+      function setRange(nextRange) {
+        rangeType = nextRange;
+        document.querySelectorAll(".range-btn").forEach(function(btn) {
+          btn.classList.toggle("active", btn.getAttribute("data-range") === nextRange);
+        });
+        fetchDbRecords();
+      }
+
+      function fetchDbRecords() {
+        dbError.style.display = "none";
+        dbLoading.style.display = "block";
+        dbBody.innerHTML = "";
+
+        callHost("get_print_records", {
+          date: dbDate.value,
+          rangeType: rangeType
+        }).then(function(data) {
+          var rows = Array.isArray(data.rows) ? data.rows : [];
+          dbTotalPrint.textContent = String(data.totalPrintSheets || 0);
+          dbTotalTest.textContent = String(data.totalTestSheets || 0);
+          if (rows.length === 0) {
+            dbBody.innerHTML = '<tr><td colspan="7" class="db-view__empty">此範圍無資料</td></tr>';
+            return;
+          }
+          dbBody.innerHTML = rows.map(function(r) {
+            return "<tr>" +
+              "<td>" + r.id + "</td>" +
+              "<td>" + (r.date || "") + "</td>" +
+              "<td>" + (r.time || "") + "</td>" +
+              "<td>" + (r.isTest ? "是" : "否") + "</td>" +
+              "<td>" + (r.amount || 0) + "</td>" +
+              "<td>" + (r.copies || 0) + "</td>" +
+              "<td>" + (r.templateName || "") + "</td>" +
+              "</tr>";
+          }).join("");
+        }).catch(function(err) {
+          dbError.textContent = err && err.message ? err.message : String(err);
+          dbError.style.display = "block";
+          dbTotalPrint.textContent = "0";
+          dbTotalTest.textContent = "0";
+          dbBody.innerHTML = '<tr><td colspan="7" class="db-view__empty">讀取失敗</td></tr>';
+        }).finally(function() {
+          dbLoading.style.display = "none";
+        });
+      }
+
+      window.openDbViewer = function() {
+        dbView.classList.add("is-open");
+        var hotspot = document.getElementById("secretHotspot");
+        if (hotspot) hotspot.style.display = "none";
+        fetchDbRecords();
+      };
+
+      window.closeDbViewer = function() {
+        dbView.classList.remove("is-open");
+        var hotspot = document.getElementById("secretHotspot");
+        if (hotspot) hotspot.style.display = "";
+        showStep("idle");
+      };
+
+      document.getElementById("dbViewClose").addEventListener("click", function(e) {
+        e.stopPropagation();
+        window.closeDbViewer();
+      });
+      dbDate.addEventListener("change", fetchDbRecords);
+      document.querySelectorAll(".range-btn").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          setRange(btn.getAttribute("data-range") || "day");
+        });
+      });
+    }
   </script>
 </body>
 </html>

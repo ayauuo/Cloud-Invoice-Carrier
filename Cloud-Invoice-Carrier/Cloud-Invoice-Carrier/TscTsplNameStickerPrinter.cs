@@ -425,7 +425,7 @@ internal static class TscTsplNameStickerPrinter
                     {
                         var x = marginDots + col * (cellWidth + colGapDots) + GetColumnOffsetPx(col);
                         var y = gridTopDots + row * (cellHeight + rowGapDots);
-                        var layout = new RectangleF(x + padX + 40f, y + padY - 75f, innerWidth, innerHeight);
+                        var layout = new RectangleF(x + padX + 40f, y + padY - 10f, innerWidth, innerHeight);
                         if (!useTwoLineLayout)
                         {
                             DrawTrackedString(text ?? string.Empty, best, brush, layout);

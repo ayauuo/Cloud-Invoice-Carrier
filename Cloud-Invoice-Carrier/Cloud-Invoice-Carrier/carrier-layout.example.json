@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "appMode": "carrier",
+  "billAcceptorEnabled": true,
+  "allowBackTemplateSelection": true,
+  "printBarcodeOnBack": true,
+  "showDuplexFlipCompensation": true,
+  "savePrintImage": true,
+  "billAcceptorPort": "COM3",
+  "defaultPrintDuplex": "simplex",
+  "defaultDuplexFlipCompensation": "auto",
+  "templates": {
+    "1": {
+      "front": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 },
+      "back": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 }
+    },
+    "2": {
+      "front": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 },
+      "back": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 }
+    },
+    "3": {
+      "front": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 },
+      "back": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 }
+    },
+    "4": {
+      "front": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 },
+      "back": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 }
+    },
+    "5": {
+      "front": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 },
+      "back": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 }
+    },
+    "6": {
+      "front": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 },
+      "back": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 }
+    },
+    "7": {
+      "front": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 },
+      "back": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 }
+    },
+    "8": {
+      "front": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 },
+      "back": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 }
+    },
+    "9": {
+      "front": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 },
+      "back": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 }
+    },
+    "10": {
+      "front": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 },
+      "back": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 }
+    },
+    "11": {
+      "front": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 },
+      "back": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 }
+    },
+    "12": {
+      "front": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 },
+      "back": { "previewBarcodeX": 102, "previewBarcodeY": 409, "printBarcodeX": 104, "printBarcodeY": 419 }
+    }
+  }
+}
+

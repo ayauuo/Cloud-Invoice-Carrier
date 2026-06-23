@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Cloud_Invoice_Carrier;
 
@@ -115,6 +117,74 @@ internal static class AppEnvConfig
 
     /// <summary>黑標感應後裁切前額外走紙步數（dots）。</summary>
     public static int TscBlackMarkPostFeedSteps { get; private set; } = 0;
+
+    /// <summary>是否允許在 UI 分別選擇正反面樣式。</summary>
+    public static bool CarrierAllowBackTemplateSelection { get; private set; } = true;
+
+    /// <summary>是否顯示「列印內容／列印方式／雙面翻面補償」選項列（隱藏時使用 carrier-layout.json 預設）。</summary>
+    public static bool CarrierShowDuplexFlipCompensation { get; private set; } = true;
+
+    /// <summary>載具條碼是否也印在背面。</summary>
+    public static bool CarrierPrintBarcodeOnBack { get; private set; } = true;
+
+    /// <summary>是否列印載具條碼（關閉時前後都不印）。</summary>
+    public static bool CarrierPrintBarcodeEnabled { get; private set; } = true;
+
+    /// <summary>列印時是否將合成圖存到本機（預設 C:\test）。</summary>
+    public static bool SavePrintImage { get; private set; } = true;
+
+    /// <summary>列印圖片存檔目錄。</summary>
+    public static string PrintSaveFolder { get; private set; } = @"C:\test";
+
+    /// <summary>是否啟用 RS232 紙鈔機（關閉時待機頁可點擊進入）。</summary>
+    public static bool BillAcceptorEnabled { get; private set; } = true;
+
+    /// <summary>紙鈔機串口名稱（預設 COM3）。</summary>
+    public static string BillAcceptorPort { get; private set; } = "COM3";
+
+    /// <summary>資料庫報表專案名稱。</summary>
+    public static string CarrierProjectName { get; private set; } = "載具列印";
+
+    /// <summary>是否啟用 Kiosk 全螢幕鎖定（false 時可正常關閉視窗）。</summary>
+    public static bool KioskEnabled { get; private set; } = true;
+
+    /// <summary>從 carrier-layout.json 套用 UI 預設（.env 存在時仍可覆寫）。</summary>
+    public static void ApplyCarrierLayoutDefaults(string? layoutPath)
+    {
+        if (string.IsNullOrWhiteSpace(layoutPath) || !File.Exists(layoutPath))
+            return;
+
+        try
+        {
+            var json = File.ReadAllText(layoutPath);
+            var ui = JsonSerializer.Deserialize<CarrierLayoutUiDefaults>(json, LayoutJsonOptions);
+            if (ui == null)
+                return;
+
+            if (ui.AllowBackTemplateSelection is bool allowBack)
+                CarrierAllowBackTemplateSelection = allowBack;
+            if (ui.PrintBarcodeOnBack is bool printBack)
+                CarrierPrintBarcodeOnBack = printBack;
+            if (ui.ShowDuplexFlipCompensation is bool showDuplex)
+                CarrierShowDuplexFlipCompensation = showDuplex;
+            if (ui.SavePrintImage is bool savePrint)
+                SavePrintImage = savePrint;
+            if (!string.IsNullOrWhiteSpace(ui.BillAcceptorPort))
+                BillAcceptorPort = ui.BillAcceptorPort.Trim();
+            if (ui.BillAcceptorEnabled is bool billEnabled)
+                BillAcceptorEnabled = billEnabled;
+            if (!string.IsNullOrWhiteSpace(ui.AppMode))
+            {
+                var mode = ui.AppMode.Trim();
+                Mode = mode.Equals("name_label", StringComparison.OrdinalIgnoreCase)
+                    || mode.Equals("namelabel", StringComparison.OrdinalIgnoreCase)
+                    || mode.Equals("tsc", StringComparison.OrdinalIgnoreCase)
+                    ? AppMode.NameLabel
+                    : AppMode.Carrier;
+            }
+        }
+        catch { }
+    }
 
     public static void Load(string startupDirectory)
     {
@@ -335,6 +405,108 @@ internal static class AppEnvConfig
                 if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var postFeedSteps))
                     TscBlackMarkPostFeedSteps = Math.Clamp(postFeedSteps, 0, 20000);
                 break;
+            case "CARRIER_ALLOW_BACK_TEMPLATE_SELECTION":
+            case "CARRIER_DUAL_TEMPLATE_SELECTABLE":
+                CarrierAllowBackTemplateSelection =
+                    value.Equals("1", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("on", StringComparison.OrdinalIgnoreCase);
+                break;
+            case "CARRIER_SHOW_DUPLEX_FLIP_COMPENSATION":
+            case "CARRIER_SHOW_LANDSCAPE_ANNOT":
+                CarrierShowDuplexFlipCompensation =
+                    value.Equals("1", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("on", StringComparison.OrdinalIgnoreCase);
+                break;
+            case "CARRIER_PRINT_BARCODE_ON_BACK":
+            case "CARRIER_INCLUDE_BARCODE_ON_BACK":
+                CarrierPrintBarcodeOnBack =
+                    value.Equals("1", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("on", StringComparison.OrdinalIgnoreCase);
+                break;
+            case "CARRIER_PRINT_BARCODE":
+            case "CARRIER_PRINT_BARCODE_ENABLED":
+                CarrierPrintBarcodeEnabled =
+                    value.Equals("1", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("on", StringComparison.OrdinalIgnoreCase);
+                break;
+            case "SAVE_PRINT_IMAGE":
+            case "CARRIER_SAVE_PRINT_IMAGE":
+            case "PRINT_SAVE_IMAGE":
+                SavePrintImage =
+                    value.Equals("1", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("on", StringComparison.OrdinalIgnoreCase);
+                break;
+            case "PRINT_SAVE_FOLDER":
+            case "SAVE_PRINT_IMAGE_FOLDER":
+            case "CARRIER_PRINT_SAVE_FOLDER":
+                PrintSaveFolder = value;
+                break;
+            case "BILL_ACCEPTOR_ENABLED":
+            case "CARRIER_BILL_ACCEPTOR_ENABLED":
+                BillAcceptorEnabled =
+                    value.Equals("1", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("on", StringComparison.OrdinalIgnoreCase);
+                break;
+            case "BILL_ACCEPTOR_PORT":
+            case "CARRIER_BILL_ACCEPTOR_PORT":
+                if (!string.IsNullOrWhiteSpace(value))
+                    BillAcceptorPort = value.Trim();
+                break;
+            case "CARRIER_PROJECT_NAME":
+            case "PROJECT_NAME":
+                CarrierProjectName = value;
+                break;
+            case "KIOSK_ENABLED":
+            case "KIOSK_MODE":
+                KioskEnabled =
+                    value.Equals("1", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("on", StringComparison.OrdinalIgnoreCase);
+                break;
         }
+    }
+
+    private static readonly JsonSerializerOptions LayoutJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true
+    };
+
+    private sealed class CarrierLayoutUiDefaults
+    {
+        [JsonPropertyName("allowBackTemplateSelection")]
+        public bool? AllowBackTemplateSelection { get; set; }
+
+        [JsonPropertyName("printBarcodeOnBack")]
+        public bool? PrintBarcodeOnBack { get; set; }
+
+        [JsonPropertyName("showDuplexFlipCompensation")]
+        public bool? ShowDuplexFlipCompensation { get; set; }
+
+        [JsonPropertyName("savePrintImage")]
+        public bool? SavePrintImage { get; set; }
+
+        [JsonPropertyName("billAcceptorPort")]
+        public string? BillAcceptorPort { get; set; }
+
+        [JsonPropertyName("billAcceptorEnabled")]
+        public bool? BillAcceptorEnabled { get; set; }
+
+        [JsonPropertyName("appMode")]
+        public string? AppMode { get; set; }
     }
 }
