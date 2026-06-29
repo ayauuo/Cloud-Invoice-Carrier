@@ -18,84 +18,84 @@
 
 "1": {
 
-  "front": { "previewBarcodeX": 560, "previewBarcodeY": 295, "printBarcodeX": 560, "printBarcodeY": 295 },
+  "front": { "previewBarcodeX": 555, "previewBarcodeY": 295, "printBarcodeX": 555, "printBarcodeY": 295 },
 
-  "back": { "previewBarcodeX": 560, "previewBarcodeY": 295, "printBarcodeX": 560, "printBarcodeY": 295 }
+  "back": { "previewBarcodeX": 555, "previewBarcodeY": 295, "printBarcodeX": 555, "printBarcodeY": 295 }
 
 },
 
 "2": {
 
-  "front": { "previewBarcodeX": 565, "previewBarcodeY": 305, "printBarcodeX": 565, "printBarcodeY": 305 },
+  "front": { "previewBarcodeX": 560, "previewBarcodeY": 305, "printBarcodeX": 560, "printBarcodeY": 305 },
 
-  "back": { "previewBarcodeX": 565, "previewBarcodeY": 305, "printBarcodeX": 565, "printBarcodeY": 305 }
+  "back": { "previewBarcodeX": 560, "previewBarcodeY": 305, "printBarcodeX": 560, "printBarcodeY": 305 }
 
 },
 
 "3": {
 
-  "front": { "previewBarcodeX": 545, "previewBarcodeY": 330, "printBarcodeX": 545, "printBarcodeY": 330 },
+  "front": { "previewBarcodeX": 540, "previewBarcodeY": 330, "printBarcodeX": 540, "printBarcodeY": 330 },
 
-  "back": { "previewBarcodeX": 545, "previewBarcodeY": 330, "printBarcodeX": 545, "printBarcodeY": 330 }
+  "back": { "previewBarcodeX": 540, "previewBarcodeY": 330, "printBarcodeX": 540, "printBarcodeY": 330 }
 
 },
 
 "4": {
-  "front": { "previewBarcodeX": 550, "previewBarcodeY": 300, "printBarcodeX": 550, "printBarcodeY": 300 },
+  "front": { "previewBarcodeX": 545, "previewBarcodeY": 300, "printBarcodeX": 545, "printBarcodeY": 300 },
 
-  "back": { "previewBarcodeX": 550, "previewBarcodeY": 300, "printBarcodeX": 550, "printBarcodeY": 300 }
+  "back": { "previewBarcodeX": 545, "previewBarcodeY": 300, "printBarcodeX": 545, "printBarcodeY": 300 }
 
 },
 
 "5": {
 
-  "front": { "previewBarcodeX": 440, "previewBarcodeY": 300, "printBarcodeX": 440, "printBarcodeY": 300 },
+  "front": { "previewBarcodeX": 435, "previewBarcodeY": 300, "printBarcodeX": 435, "printBarcodeY": 300 },
 
-  "back": { "previewBarcodeX": 440, "previewBarcodeY": 300, "printBarcodeX": 440, "printBarcodeY": 300 }
+  "back": { "previewBarcodeX": 435, "previewBarcodeY": 300, "printBarcodeX": 435, "printBarcodeY": 300 }
 
 },
 
   "6": {
-    "front": { "previewBarcodeX": 430, "previewBarcodeY": 295, "printBarcodeX": 430, "printBarcodeY": 295 },
+    "front": { "previewBarcodeX": 410, "previewBarcodeY": 295, "printBarcodeX": 410, "printBarcodeY": 295 },
 
-"back": {  "previewBarcodeX": 430, "previewBarcodeY": 295, "printBarcodeX": 430, "printBarcodeY": 295 }
+"back": {  "previewBarcodeX": 410, "previewBarcodeY": 295, "printBarcodeX": 410, "printBarcodeY": 295 }
 
   },
 
     "7": {
-      "front": { "previewBarcodeX": 590, "previewBarcodeY": 290, "printBarcodeX": 590, "printBarcodeY": 290 },
+      "front": { "previewBarcodeX": 585, "previewBarcodeY": 290, "printBarcodeX": 585, "printBarcodeY": 290 },
 
-      "back": { "previewBarcodeX": 590, "previewBarcodeY": 290, "printBarcodeX": 590, "printBarcodeY": 290 }
+      "back": { "previewBarcodeX": 585, "previewBarcodeY": 290, "printBarcodeX": 585, "printBarcodeY": 290 }
     },
 
     "8": {
-      "front": { "previewBarcodeX": 555, "previewBarcodeY": 285, "printBarcodeX": 555, "printBarcodeY": 285 },
+      "front": { "previewBarcodeX": 550, "previewBarcodeY": 285, "printBarcodeX": 550, "printBarcodeY": 285 },
 
-      "back": { "previewBarcodeX": 555, "previewBarcodeY": 285, "printBarcodeX": 555, "printBarcodeY": 285 }
+      "back": { "previewBarcodeX": 550, "previewBarcodeY": 285, "printBarcodeX": 550, "printBarcodeY": 285 }
     },
 
     "9": {
-      "front": { "previewBarcodeX": 420, "previewBarcodeY": 290, "printBarcodeX": 420, "printBarcodeY": 290 },
+      "front": { "previewBarcodeX": 415, "previewBarcodeY": 290, "printBarcodeX": 415, "printBarcodeY": 290 },
 
-      "back": { "previewBarcodeX": 420, "previewBarcodeY": 290, "printBarcodeX": 420, "printBarcodeY": 290 }
+      "back": { "previewBarcodeX": 415, "previewBarcodeY": 290, "printBarcodeX": 415, "printBarcodeY": 290 }
     },
 
     "10": {
-      "front": { "previewBarcodeX": 600, "previewBarcodeY": 295, "printBarcodeX": 600, "printBarcodeY": 295 },
+      "front": { "previewBarcodeX": 595, "previewBarcodeY": 295, "printBarcodeX": 595, "printBarcodeY": 295 },
 
-      "back": { "previewBarcodeX": 600, "previewBarcodeY": 295, "printBarcodeX": 600, "printBarcodeY": 295 }
+      "back": { "previewBarcodeX": 595, "previewBarcodeY": 295, "printBarcodeX": 595, "printBarcodeY": 295 }
     },
 
     "11": {
-      "front": { "previewBarcodeX": 405, "previewBarcodeY": 295, "printBarcodeX": 405, "printBarcodeY": 295 },
+      "front": { "previewBarcodeX": 385, "previewBarcodeY": 295, "printBarcodeX": 385, "printBarcodeY": 295 },
 
-      "back": { "previewBarcodeX": 405, "previewBarcodeY": 295, "printBarcodeX": 405, "printBarcodeY": 295 }
+      "back": { "previewBarcodeX": 385, "previewBarcodeY": 295, "printBarcodeX": 385, "printBarcodeY": 295 }
     },
 
     "12": {
-      "front": { "previewBarcodeX": 580, "previewBarcodeY": 320, "printBarcodeX": 580, "printBarcodeY": 320 },
+      "front": { "previewBarcodeX": 560, "previewBarcodeY": 320, "printBarcodeX": 560, "printBarcodeY": 320 },
 
-      "back": { "previewBarcodeX": 580, "previewBarcodeY": 320, "printBarcodeX": 580, "printBarcodeY": 320 }
+      "back": { "previewBarcodeX": 560, "previewBarcodeY": 320, "printBarcodeX": 560, "printBarcodeY": 320 }
     }
 
   }
@@ -113,91 +113,91 @@
 // "duplex" -雙面列印
 
 // 布丁狗版位
-// "front": { "previewBarcodeX": 445, "previewBarcodeY": 510, "printBarcodeX": 445, "printBarcodeY": 510 },
+// "front": { "previewBarcodeX": 450, "previewBarcodeY": 535, "printBarcodeX": 450, "printBarcodeY": 535 },
 
-// "back": { "previewBarcodeX": 445, "previewBarcodeY": 510, "printBarcodeX": 445, "printBarcodeY": 510 }
+// "back": { "previewBarcodeX": 450, "previewBarcodeY": 535, "printBarcodeX": 450, "printBarcodeY": 535 }
 
 // 巨人版位
 // "1": {
 
-//   "front": { "previewBarcodeX": 275, "previewBarcodeY": 147, "printBarcodeX": 275, "printBarcodeY": 147 },
+//   "front": { "previewBarcodeX": 555, "previewBarcodeY": 295, "printBarcodeX": 555, "printBarcodeY": 295 },
 
-//   "back": { "previewBarcodeX": 275, "previewBarcodeY": 147, "printBarcodeX": 275, "printBarcodeY": 147 }
+//   "back": { "previewBarcodeX": 555, "previewBarcodeY": 295, "printBarcodeX": 555, "printBarcodeY": 295 }
 
 // },
 
 // "2": {
 
-//   "front": { "previewBarcodeX": 280, "previewBarcodeY": 152, "printBarcodeX": 280, "printBarcodeY": 152 },
+//   "front": { "previewBarcodeX": 560, "previewBarcodeY": 305, "printBarcodeX": 560, "printBarcodeY": 305 },
 
-//   "back": { "previewBarcodeX": 280, "previewBarcodeY": 152, "printBarcodeX": 280, "printBarcodeY": 152 }
+//   "back": { "previewBarcodeX": 560, "previewBarcodeY": 305, "printBarcodeX": 560, "printBarcodeY": 305 }
 
 // },
 
 // "3": {
 
-//   "front": { "previewBarcodeX": 266, "previewBarcodeY": 163, "printBarcodeX": 266, "printBarcodeY": 163 },
+//   "front": { "previewBarcodeX": 540, "previewBarcodeY": 330, "printBarcodeX": 540, "printBarcodeY": 330 },
 
-//   "back": { "previewBarcodeX": 266, "previewBarcodeY": 163, "printBarcodeX": 266, "printBarcodeY": 163 }
+//   "back": { "previewBarcodeX": 540, "previewBarcodeY": 330, "printBarcodeX": 540, "printBarcodeY": 330 }
 
 // },
 
 // "4": {
-//   "front": { "previewBarcodeX": 265, "previewBarcodeY": 148, "printBarcodeX": 265, "printBarcodeY": 148 },
+//   "front": { "previewBarcodeX": 545, "previewBarcodeY": 300, "printBarcodeX": 545, "printBarcodeY": 300 },
 
-//   "back": { "previewBarcodeX": 265, "previewBarcodeY": 148, "printBarcodeX": 265, "printBarcodeY": 148 }
+//   "back": { "previewBarcodeX": 545, "previewBarcodeY": 300, "printBarcodeX": 545, "printBarcodeY": 300 }
 
 // },
 
 // "5": {
 
-//   "front": { "previewBarcodeX": 210, "previewBarcodeY": 145, "printBarcodeX": 210, "printBarcodeY": 145 },
+//   "front": { "previewBarcodeX": 435, "previewBarcodeY": 300, "printBarcodeX": 435, "printBarcodeY": 300 },
 
-//   "back": { "previewBarcodeX": 210, "previewBarcodeY": 145, "printBarcodeX": 210, "printBarcodeY": 145 }
+//   "back": { "previewBarcodeX": 435, "previewBarcodeY": 300, "printBarcodeX": 435, "printBarcodeY": 300 }
 
 // },
 
 //   "6": {
-//     "front": { "previewBarcodeX": 205, "previewBarcodeY": 145, "printBarcodeX": 205, "printBarcodeY": 145 },
+//     "front": { "previewBarcodeX": 410, "previewBarcodeY": 295, "printBarcodeX": 410, "printBarcodeY": 295 },
 
-// "back": {  "previewBarcodeX": 205, "previewBarcodeY": 145, "printBarcodeX": 205, "printBarcodeY": 145 }
+// "back": {  "previewBarcodeX": 410, "previewBarcodeY": 295, "printBarcodeX": 410, "printBarcodeY": 295 }
 
 //   },
 
 //     "7": {
-//       "front": { "previewBarcodeX": 295, "previewBarcodeY": 144, "printBarcodeX": 295, "printBarcodeY": 144 },
+//       "front": { "previewBarcodeX": 585, "previewBarcodeY": 290, "printBarcodeX": 585, "printBarcodeY": 290 },
 
-//       "back": { "previewBarcodeX": 295, "previewBarcodeY": 144, "printBarcodeX": 295, "printBarcodeY": 144 }
+//       "back": { "previewBarcodeX": 585, "previewBarcodeY": 290, "printBarcodeX": 585, "printBarcodeY": 290 }
 //     },
 
 //     "8": {
-//       "front": { "previewBarcodeX": 275, "previewBarcodeY": 145, "printBarcodeX": 275, "printBarcodeY": 145 },
+//       "front": { "previewBarcodeX": 550, "previewBarcodeY": 285, "printBarcodeX": 550, "printBarcodeY": 285 },
 
-//       "back": { "previewBarcodeX": 275, "previewBarcodeY": 145, "printBarcodeX": 275, "printBarcodeY": 145 }
+//       "back": { "previewBarcodeX": 550, "previewBarcodeY": 285, "printBarcodeX": 550, "printBarcodeY": 285 }
 //     },
 
 //     "9": {
-//       "front": { "previewBarcodeX": 200, "previewBarcodeY": 145, "printBarcodeX": 200, "printBarcodeY": 145 },
+//       "front": { "previewBarcodeX": 415, "previewBarcodeY": 290, "printBarcodeX": 415, "printBarcodeY": 290 },
 
-//       "back": { "previewBarcodeX": 200, "previewBarcodeY": 145, "printBarcodeX": 200, "printBarcodeY": 145 }
+//       "back": { "previewBarcodeX": 415, "previewBarcodeY": 290, "printBarcodeX": 415, "printBarcodeY": 290 }
 //     },
 
 //     "10": {
-//       "front": { "previewBarcodeX": 297, "previewBarcodeY": 150, "printBarcodeX": 297, "printBarcodeY": 150 },
+//       "front": { "previewBarcodeX": 595, "previewBarcodeY": 295, "printBarcodeX": 595, "printBarcodeY": 295 },
 
-//       "back": { "previewBarcodeX": 297, "previewBarcodeY": 150, "printBarcodeX": 297, "printBarcodeY": 150 }
+//       "back": { "previewBarcodeX": 595, "previewBarcodeY": 295, "printBarcodeX": 595, "printBarcodeY": 295 }
 //     },
 
 //     "11": {
-//       "front": { "previewBarcodeX": 192, "previewBarcodeY": 143, "printBarcodeX": 192, "printBarcodeY": 143 },
+//       "front": { "previewBarcodeX": 385, "previewBarcodeY": 295, "printBarcodeX": 385, "printBarcodeY": 295 },
 
-//       "back": { "previewBarcodeX": 192, "previewBarcodeY": 143, "printBarcodeX": 192, "printBarcodeY": 143 }
+//       "back": { "previewBarcodeX": 385, "previewBarcodeY": 295, "printBarcodeX": 385, "printBarcodeY": 295 }
 //     },
 
 //     "12": {
-//       "front": { "previewBarcodeX": 260, "previewBarcodeY": 142, "printBarcodeX": 260, "printBarcodeY": 142 },
+//       "front": { "previewBarcodeX": 560, "previewBarcodeY": 320, "printBarcodeX": 560, "printBarcodeY": 320 },
 
-//       "back": { "previewBarcodeX": 260, "previewBarcodeY": 142, "printBarcodeX": 260, "printBarcodeY": 142 }
+//       "back": { "previewBarcodeX": 560, "previewBarcodeY": 320, "printBarcodeX": 560, "printBarcodeY": 320 }
 //     }
 
 // 巨人縮小版

@@ -1411,13 +1411,12 @@
         width: 2,
         height: 70,
         // 巨人 height: 70,
-        // 巨人2 height: 90,
         // 布丁狗 height: 80,
         margin: 6,
         displayValue: true,
         fontSize: 15,
         // 布丁狗 fontSize: 15,
-        // 巨人2 fontSize: 13,
+        // 巨人 fontSize: 15,
         textMargin: 0,
         background: "transparent",
         lineColor: "#000000"
@@ -1566,9 +1565,8 @@
       var ctx = canvas.getContext("2d");
       ctx.drawImage(loadedBg, 0, 0, loadedBg.width, loadedBg.height);
       if (includeCarrier && loadedBarcode) {
-        var baseWidth = loadedBg.width * 0.51;
-        // 巨人 baseWidth = loadedBg.width * 0.52;
-        // 巨人2 baseWidth = loadedBg.width * 0.4;
+        var baseWidth = loadedBg.width * 0.52;
+        // 巨人 baseWidth = loadedBg.width * 0.51;
         // 布丁狗 baseWidth = loadedBg.width * 0.55;
         var baseScale = baseWidth / loadedBarcode.width;
         var baseHeight = loadedBarcode.height * baseScale;
@@ -1732,7 +1730,6 @@
         if (includeCarrier && loadedBarcode) {
           const baseWidth = loadedBg.width * 0.52;
           // 巨人 baseWidth = loadedBg.width * 0.52;
-          // 巨人2 baseWidth = loadedBg.width * 0.4;
           // 布丁狗 baseWidth = loadedBg.width * 0.55;
           const baseScale = baseWidth / loadedBarcode.width;
           const baseHeight = loadedBarcode.height * baseScale;
