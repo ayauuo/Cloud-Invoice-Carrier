@@ -168,7 +168,7 @@
     <None Update="姓名貼鍵盤.html;載具生成器2.html;zhuyin-dict.json;jszhuyin\database.data;picture\titan01.jpg;picture\titan02.jpg">
       <ExcludeFromSingleFile>false</ExcludeFromSingleFile>
     </None>
-  </ItemGroup>
+  </ItemGroup>  
 
   <!-- 建置／發佈時將 env.package（或專案根目錄 .env）複製為 exe 旁的 .env -->
   <Target Name="CopyAppEnvToOutput" AfterTargets="Build">
@@ -192,5 +192,5 @@
           DestinationFiles="$(PublishDir).env"
           Condition="Exists('$(_AppEnvSource)')" />
   </Target>
-
+ 
 </Project>    

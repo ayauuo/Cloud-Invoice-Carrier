@@ -16,6 +16,7 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
     public partial class Form1 : Form
     {
         private const string AppVirtualHost = "app.local";
+        private string _webContentRoot = AppPaths.ContentRoot;
 
         private static readonly JsonSerializerOptions WebMessageJsonOptions = new()
         {
@@ -111,6 +112,8 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
                 contentRoot = Path.GetDirectoryName(htmlPath) ?? AppPaths.ContentRoot;
             }
 
+            _webContentRoot = contentRoot;
+
             webView21.CoreWebView2.SetVirtualHostNameToFolderMapping(
                 AppVirtualHost,
                 contentRoot,
@@ -167,7 +170,8 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
                             firstColumnOffsetXPx = AppEnvConfig.NameLabelFirstColumnOffsetXPx,
                             columnOffsetsXPx = AppEnvConfig.NameLabelColumnOffsetsXPx,
                             rotate180 = AppEnvConfig.NameLabelRotate180,
-                            defaultFontFamily = AppEnvConfig.NameLabelBitmapFontFamily
+                            defaultFontFamily = AppEnvConfig.NameLabelBitmapFontFamily,
+                            defaultText = AppEnvConfig.NameLabelDefaultText
                         };
                         webView21.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(layout));
                     }
@@ -241,8 +245,11 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
             {
                 type = "setCarrierTemplateOptions",
                 allowBackTemplateSelection = config.AllowBackTemplateSelection,
+                templateMode = AppEnvConfig.CarrierTemplateMode,
                 printBarcodeOnBack = config.PrintBarcodeOnBack,
-                printBarcodeEnabled = AppEnvConfig.CarrierPrintBarcodeEnabled
+                printBarcodeEnabled = AppEnvConfig.CarrierPrintBarcodeEnabled,
+                frontTemplateImages = CarrierTemplateImageResolver.ResolveHeadImages(_webContentRoot),
+                backTemplateImages = CarrierTemplateImageResolver.ResolveBackImages(_webContentRoot)
             }));
 
             webView21.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new
@@ -313,7 +320,20 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
         {
             try
             {
-                var json = e.WebMessageAsJson;
+                // 優先用字串本體（HTML 端 postMessage(JSON.stringify(...))）
+                string json;
+                try
+                {
+                    json = e.TryGetWebMessageAsString();
+                }
+                catch
+                {
+                    json = e.WebMessageAsJson;
+                }
+
+                if (string.IsNullOrWhiteSpace(json))
+                    json = e.WebMessageAsJson;
+
                 if (TryHandleBillAcceptorWebMessage(json))
                     return;
                 if (TryHandleHostRpc(json))

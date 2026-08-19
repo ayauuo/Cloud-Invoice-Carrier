@@ -1,5 +1,4 @@
 {
-
   "version": 1,
 
   "appMode": "carrier",
@@ -15,194 +14,53 @@
   "defaultDuplexFlipCompensation": "landscape",
 
   "templates": {
-
-"1": {
-
-  "front": { "previewBarcodeX": 555, "previewBarcodeY": 295, "printBarcodeX": 555, "printBarcodeY": 295 },
-
-  "back": { "previewBarcodeX": 555, "previewBarcodeY": 295, "printBarcodeX": 555, "printBarcodeY": 295 }
-
-},
-
-"2": {
-
-  "front": { "previewBarcodeX": 560, "previewBarcodeY": 305, "printBarcodeX": 560, "printBarcodeY": 305 },
-
-  "back": { "previewBarcodeX": 560, "previewBarcodeY": 305, "printBarcodeX": 560, "printBarcodeY": 305 }
-
-},
-
-"3": {
-
-  "front": { "previewBarcodeX": 540, "previewBarcodeY": 330, "printBarcodeX": 540, "printBarcodeY": 330 },
-
-  "back": { "previewBarcodeX": 540, "previewBarcodeY": 330, "printBarcodeX": 540, "printBarcodeY": 330 }
-
-},
-
-"4": {
-  "front": { "previewBarcodeX": 545, "previewBarcodeY": 300, "printBarcodeX": 545, "printBarcodeY": 300 },
-
-  "back": { "previewBarcodeX": 545, "previewBarcodeY": 300, "printBarcodeX": 545, "printBarcodeY": 300 }
-
-},
-
-"5": {
-
-  "front": { "previewBarcodeX": 435, "previewBarcodeY": 300, "printBarcodeX": 435, "printBarcodeY": 300 },
-
-  "back": { "previewBarcodeX": 435, "previewBarcodeY": 300, "printBarcodeX": 435, "printBarcodeY": 300 }
-
-},
-
-  "6": {
-    "front": { "previewBarcodeX": 410, "previewBarcodeY": 295, "printBarcodeX": 410, "printBarcodeY": 295 },
-
-"back": {  "previewBarcodeX": 410, "previewBarcodeY": 295, "printBarcodeX": 410, "printBarcodeY": 295 }
-
-  },
-
+    "1": {
+      "front": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 },
+      "back": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 }
+    },
+    "2": {
+      "front": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 },
+      "back": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 }
+    },
+    "3": {
+      "front": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 },
+      "back": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 }
+    },
+    "4": {
+      "front": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 },
+      "back": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 }
+    },
+    "5": {
+      "front": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 },
+      "back": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 }
+    },
+    "6": {
+      "front": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 },
+      "back": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 }
+    },
     "7": {
-      "front": { "previewBarcodeX": 585, "previewBarcodeY": 290, "printBarcodeX": 585, "printBarcodeY": 290 },
-
-      "back": { "previewBarcodeX": 585, "previewBarcodeY": 290, "printBarcodeX": 585, "printBarcodeY": 290 }
+      "front": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 },
+      "back": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 }
     },
-
     "8": {
-      "front": { "previewBarcodeX": 550, "previewBarcodeY": 285, "printBarcodeX": 550, "printBarcodeY": 285 },
-
-      "back": { "previewBarcodeX": 550, "previewBarcodeY": 285, "printBarcodeX": 550, "printBarcodeY": 285 }
+      "front": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 },
+      "back": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 }
     },
-
     "9": {
-      "front": { "previewBarcodeX": 415, "previewBarcodeY": 290, "printBarcodeX": 415, "printBarcodeY": 290 },
-
-      "back": { "previewBarcodeX": 415, "previewBarcodeY": 290, "printBarcodeX": 415, "printBarcodeY": 290 }
+      "front": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 },
+      "back": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 }
     },
-
     "10": {
-      "front": { "previewBarcodeX": 595, "previewBarcodeY": 295, "printBarcodeX": 595, "printBarcodeY": 295 },
-
-      "back": { "previewBarcodeX": 595, "previewBarcodeY": 295, "printBarcodeX": 595, "printBarcodeY": 295 }
+      "front": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 },
+      "back": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 }
     },
-
     "11": {
-      "front": { "previewBarcodeX": 385, "previewBarcodeY": 295, "printBarcodeX": 385, "printBarcodeY": 295 },
-
-      "back": { "previewBarcodeX": 385, "previewBarcodeY": 295, "printBarcodeX": 385, "printBarcodeY": 295 }
+      "front": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 },
+      "back": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 }
     },
-
     "12": {
-      "front": { "previewBarcodeX": 560, "previewBarcodeY": 320, "printBarcodeX": 560, "printBarcodeY": 320 },
-
-      "back": { "previewBarcodeX": 560, "previewBarcodeY": 320, "printBarcodeX": 560, "printBarcodeY": 320 }
+      "front": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 },
+      "back": { "previewBarcodeX": 700, "previewBarcodeY": 364, "printBarcodeX": 700, "printBarcodeY": 364 }
     }
-
   }
-
 }
-
-// "defaultPrintDuplex": "duplex",
-
-// "defaultDuplexFlipCompensation": "landscape",
-// "auto" — 自動（預設）
-// "landscape" — 橫版
-// "portrait" — 直版
-
-// "simplex" -單面列印（預設）
-// "duplex" -雙面列印
-
-// 布丁狗版位
-// "front": { "previewBarcodeX": 450, "previewBarcodeY": 535, "printBarcodeX": 450, "printBarcodeY": 535 },
-
-// "back": { "previewBarcodeX": 450, "previewBarcodeY": 535, "printBarcodeX": 450, "printBarcodeY": 535 }
-
-// 巨人版位
-// "1": {
-
-//   "front": { "previewBarcodeX": 555, "previewBarcodeY": 295, "printBarcodeX": 555, "printBarcodeY": 295 },
-
-//   "back": { "previewBarcodeX": 555, "previewBarcodeY": 295, "printBarcodeX": 555, "printBarcodeY": 295 }
-
-// },
-
-// "2": {
-
-//   "front": { "previewBarcodeX": 560, "previewBarcodeY": 305, "printBarcodeX": 560, "printBarcodeY": 305 },
-
-//   "back": { "previewBarcodeX": 560, "previewBarcodeY": 305, "printBarcodeX": 560, "printBarcodeY": 305 }
-
-// },
-
-// "3": {
-
-//   "front": { "previewBarcodeX": 540, "previewBarcodeY": 330, "printBarcodeX": 540, "printBarcodeY": 330 },
-
-//   "back": { "previewBarcodeX": 540, "previewBarcodeY": 330, "printBarcodeX": 540, "printBarcodeY": 330 }
-
-// },
-
-// "4": {
-//   "front": { "previewBarcodeX": 545, "previewBarcodeY": 300, "printBarcodeX": 545, "printBarcodeY": 300 },
-
-//   "back": { "previewBarcodeX": 545, "previewBarcodeY": 300, "printBarcodeX": 545, "printBarcodeY": 300 }
-
-// },
-
-// "5": {
-
-//   "front": { "previewBarcodeX": 435, "previewBarcodeY": 300, "printBarcodeX": 435, "printBarcodeY": 300 },
-
-//   "back": { "previewBarcodeX": 435, "previewBarcodeY": 300, "printBarcodeX": 435, "printBarcodeY": 300 }
-
-// },
-
-//   "6": {
-//     "front": { "previewBarcodeX": 410, "previewBarcodeY": 295, "printBarcodeX": 410, "printBarcodeY": 295 },
-
-// "back": {  "previewBarcodeX": 410, "previewBarcodeY": 295, "printBarcodeX": 410, "printBarcodeY": 295 }
-
-//   },
-
-//     "7": {
-//       "front": { "previewBarcodeX": 585, "previewBarcodeY": 290, "printBarcodeX": 585, "printBarcodeY": 290 },
-
-//       "back": { "previewBarcodeX": 585, "previewBarcodeY": 290, "printBarcodeX": 585, "printBarcodeY": 290 }
-//     },
-
-//     "8": {
-//       "front": { "previewBarcodeX": 550, "previewBarcodeY": 285, "printBarcodeX": 550, "printBarcodeY": 285 },
-
-//       "back": { "previewBarcodeX": 550, "previewBarcodeY": 285, "printBarcodeX": 550, "printBarcodeY": 285 }
-//     },
-
-//     "9": {
-//       "front": { "previewBarcodeX": 415, "previewBarcodeY": 290, "printBarcodeX": 415, "printBarcodeY": 290 },
-
-//       "back": { "previewBarcodeX": 415, "previewBarcodeY": 290, "printBarcodeX": 415, "printBarcodeY": 290 }
-//     },
-
-//     "10": {
-//       "front": { "previewBarcodeX": 595, "previewBarcodeY": 295, "printBarcodeX": 595, "printBarcodeY": 295 },
-
-//       "back": { "previewBarcodeX": 595, "previewBarcodeY": 295, "printBarcodeX": 595, "printBarcodeY": 295 }
-//     },
-
-//     "11": {
-//       "front": { "previewBarcodeX": 385, "previewBarcodeY": 295, "printBarcodeX": 385, "printBarcodeY": 295 },
-
-//       "back": { "previewBarcodeX": 385, "previewBarcodeY": 295, "printBarcodeX": 385, "printBarcodeY": 295 }
-//     },
-
-//     "12": {
-//       "front": { "previewBarcodeX": 560, "previewBarcodeY": 320, "printBarcodeX": 560, "printBarcodeY": 320 },
-
-//       "back": { "previewBarcodeX": 560, "previewBarcodeY": 320, "printBarcodeX": 560, "printBarcodeY": 320 }
-//     }
-
-// 巨人縮小版
-// "9": {
-//   "front": { "previewBarcodeX": 258, "previewBarcodeY": 160, "printBarcodeX": 258, "printBarcodeY": 160 },
-
-//   "back": { "previewBarcodeX": 258, "previewBarcodeY": 160, "printBarcodeX": 258, "printBarcodeY": 160 }
-// },

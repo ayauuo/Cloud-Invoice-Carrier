@@ -286,13 +286,13 @@
 </head>
 <body>
   <div class="panel">
-    <h1>姓名貼輸入</h1>
+    <h1>兌換券列印</h1>
     <p class="hint">
       下方為<strong>手機風格注音鍵盤</strong>：先打注音，再點候選中文字輸入。
-      仍可搭配實體鍵盤與 Windows 注音 IME。列印會透過主程式送 TSPL 點陣到 <strong>TSC TTP-345</strong>。
+      多行文字時，每一列會印一行；單行文字則會重複印在全部格位。列印透過主程式送 TSPL 到 <strong>TSC TTP-345</strong>。
     </p>
 
-    <textarea id="nameInput" lang="zh-TW" inputmode="text" placeholder="請輸入姓名、注音或要列印的文字"></textarea>
+    <textarea id="nameInput" lang="zh-TW" inputmode="text" placeholder="請輸入要列印的文字（可多行）"></textarea>
 
     <div class="preview-box" aria-label="列印版面預覽">
       <div class="preview-head">
@@ -375,6 +375,8 @@
       var expandedPage = 0;
       var COLLAPSED_LIMIT = 10;
       var EXPANDED_PAGE_SIZE = 50;
+      var DEFAULT_LABEL_TEXT = "吊飾兌換券\n進擊的巨人《載具吊飾卡》\n台北漫博7/23-7/27展期間\n憑此張兌換券向木棉花機台區\n工作人員領取吊飾及保護套\n此券請交由工作人員回收";
+      var defaultTextApplied = false;
 
       var keyboardMode = "zhuyin";
       var rowsByMode = {
@@ -398,6 +400,31 @@
           [{ label: "空白", ch: " ", cls: "key-wide" }]
         ]
       };
+
+      function applyDefaultLabelText(text) {
+        var next = String(text || "").trim();
+        if (!next) return;
+        if (!String(ta.value || "").trim() && !defaultTextApplied) {
+          ta.value = next;
+          defaultTextApplied = true;
+          renderPreview();
+        }
+      }
+
+      function splitLabelLines(text) {
+        return String(text || "")
+          .replace(/\r\n/g, "\n")
+          .split("\n")
+          .map(function(line) { return line.trim(); })
+          .filter(function(line) { return line.length > 0; });
+      }
+
+      function getCellLabelText(lines, multiLinePerRow, row, col) {
+        if (multiLinePerRow) {
+          return row < lines.length ? lines[row] : "";
+        }
+        return String(ta.value || "").trim() + (composition || "");
+      }
 
       function updateModeUi() {
         modeButtons.forEach(function(btn) {
@@ -583,6 +610,7 @@
                 applyInputPreviewFont(msg.defaultFontFamily);
               }
             }
+            applyDefaultLabelText(msg.defaultText || DEFAULT_LABEL_TEXT);
             renderPreview();
             return;
           }
@@ -648,6 +676,11 @@
 
         var rawText = String(ta.value || "").trim();
         if (composition) rawText += composition;
+        var textLines = splitLabelLines(rawText);
+        var multiLinePerRow = textLines.length > 1;
+        var fitSample = multiLinePerRow
+          ? textLines.slice().sort(function(a, b) { return b.length - a.length; })[0] || ""
+          : rawText;
         if (!rawText) {
           ctx.restore();
           previewMetaEl.textContent =
@@ -688,7 +721,7 @@
         for (var iter = 0; iter < 28 && (highFont - lowFont) > 0.5; iter++) {
           var mid = (highFont + lowFont) / 2;
           ctx.font = "bold " + mid + "px '" + fontFamily + "', 'Microsoft JhengHei', 'Noto Sans TC', sans-serif";
-          var tw = measureTrackedWidthPx(rawText, mid, trackingPxPreview);
+          var tw = measureTrackedWidthPx(fitSample, mid, trackingPxPreview);
           if (tw <= innerWpx * 0.95) { bestFont = mid; lowFont = mid; }
           else { highFont = mid - 0.5; }
         }
@@ -699,6 +732,8 @@
 
         for (var rr = 0; rr < rows; rr++) {
           for (var cc = 0; cc < cols; cc++) {
+            var cellText = getCellLabelText(textLines, multiLinePerRow, rr, cc);
+            if (!cellText) continue;
             var cellXmm2 = marginMm + cc * (cellWmm + colGapMm);
             var cellYmm2 = gridTopMm + rr * (cellHmm + rowGapMm);
             var offsetMm = 0;
@@ -708,16 +743,16 @@
               offsetMm = firstColOffsetMm;
             }
 
-            var textW = measureTrackedWidthPx(rawText, bestFont, trackingPxPreview);
+            var textW = measureTrackedWidthPx(cellText, bestFont, trackingPxPreview);
             var areaXpx = (cellXmm2 + padXmm + offsetMm) * pxPerMm;
             var areaWpx = innerWmm * pxPerMm;
             var startXpx = areaXpx + (areaWpx - textW) / 2;
             var centerYpx = (cellYmm2 + padYmm + innerHmm / 2) * pxPerMm;
 
             var x = startXpx;
-            for (var k = 0; k < rawText.length; k++) {
-              ctx.fillText(rawText[k], x, centerYpx);
-              x += ctx.measureText(rawText[k]).width + trackingPxPreview;
+            for (var k = 0; k < cellText.length; k++) {
+              ctx.fillText(cellText[k], x, centerYpx);
+              x += ctx.measureText(cellText[k]).width + trackingPxPreview;
             }
           }
         }
@@ -958,6 +993,7 @@
       renderKeyboard();
       setupHostDbBridge();
       initJsZhuyin();
+      applyDefaultLabelText(DEFAULT_LABEL_TEXT);
       renderPreview();
       ta.focus();
     })();

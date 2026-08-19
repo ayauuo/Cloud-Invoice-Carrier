@@ -147,6 +147,17 @@ internal static class TscTsplNameStickerPrinter
         var cellW = Math.Max(8, usableW / cols);
         var cellH = Math.Max(8, usableH / rowCount);
         var safeText = (text ?? string.Empty).Trim().Replace("\"", "'");
+        var textLines = safeText
+            .Replace("\r\n", "\n")
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var multiLinePerRow = textLines.Length > 1;
+        string GetCellText(int row, int col)
+        {
+            if (multiLinePerRow)
+                return row < textLines.Length ? textLines[row] : string.Empty;
+            return safeText;
+        }
+
         var hasNonAscii = safeText.Any(ch => ch > 127);
         var fontName = string.IsNullOrWhiteSpace(tsplFontName) ? "TSS24.BF2" : tsplFontName.Trim().Replace("\"", "");
         var textRotation = rotate180 ? 180 : 0;
@@ -198,16 +209,19 @@ internal static class TscTsplNameStickerPrinter
             {
                 for (var col = 0; col < cols; col++)
                 {
+                    var cellText = GetCellText(row, col).Replace("\"", "'");
+                    if (string.IsNullOrEmpty(cellText))
+                        continue;
                     var x = marginDots + col * (cellW + colGapDots) + 2 + GetColumnOffsetDots(col);
                     var y = gridTop + row * (cellH + rowGapDots) + 2;
-                    WriteCmd($"TEXT {x},{y},\"{fontName}\",{textRotation},1,1,\"{safeText}\"\r\n");
+                    WriteCmd($"TEXT {x},{y},\"{fontName}\",{textRotation},1,1,\"{cellText}\"\r\n");
                 }
             }
         }
         else
         {
             // 中文或混合文字：改用 BITMAP，避免印表機端中文字型不支援造成空白。
-            using var bmp = RenderLabelBitmap(safeText, wDots, hDots, dpi, cols, rowCount, colGapDots, rowGapDots, marginDots, gridTop, gridH, scale, charSpacingPx, bitmapFontFamily, firstColumnOffsetXPx, columnOffsetsXPx, rotate180);
+            using var bmp = RenderLabelBitmap(safeText, textLines, multiLinePerRow, wDots, hDots, dpi, cols, rowCount, colGapDots, rowGapDots, marginDots, gridTop, gridH, scale, charSpacingPx, bitmapFontFamily, firstColumnOffsetXPx, columnOffsetsXPx, rotate180);
             var widthBytes = bmp.Width / 8;
             if (debugSaveBitmap)
                 SaveBitmapForDebug(bmp, debugBitmapPath);
@@ -228,6 +242,8 @@ internal static class TscTsplNameStickerPrinter
 
     private static Bitmap RenderLabelBitmap(
         string text,
+        string[] textLines,
+        bool multiLinePerRow,
         int widthDots,
         int heightDots,
         int dpi,
@@ -277,10 +293,17 @@ internal static class TscTsplNameStickerPrinter
             var padY = Math.Max(2f, cellHeight * 0.12f * scale);
             var innerWidth = Math.Max(2f, cellWidth - padX * 2f);
             var innerHeight = Math.Max(2f, cellHeight - padY * 2f);
-            var textLines = (text ?? string.Empty)
-                .Replace("\r\n", "\n")
-                .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            var useTwoLineLayout = textLines.Length >= 2;
+            string GetCellText(int row, int col)
+            {
+                if (multiLinePerRow)
+                    return row < textLines.Length ? textLines[row] : string.Empty;
+                return text ?? string.Empty;
+            }
+
+            var fitSample = multiLinePerRow
+                ? textLines.OrderByDescending(static line => line.Length).FirstOrDefault() ?? string.Empty
+                : text ?? string.Empty;
+            var useTwoLineLayout = !multiLinePerRow && textLines.Length >= 2;
             var lineGapPx = Math.Max(1f, 1f * scale); // 手動雙行行距，隨比例同步放大。
             var trackingPx = (float)charSpacingPx;
             var layoutFormat = new StringFormat
@@ -368,7 +391,7 @@ internal static class TscTsplNameStickerPrinter
             {
                 if (!useTwoLineLayout)
                 {
-                    var measuredWidth = MeasureTrackedWidth(text ?? string.Empty, font);
+                    var measuredWidth = MeasureTrackedWidth(fitSample, font);
                     return measuredWidth <= innerWidth * 0.95f;
                 }
 
@@ -423,12 +446,15 @@ internal static class TscTsplNameStickerPrinter
                 {
                     for (var col = 0; col < cols; col++)
                     {
+                        var cellText = GetCellText(row, col);
+                        if (string.IsNullOrEmpty(cellText))
+                            continue;
                         var x = marginDots + col * (cellWidth + colGapDots) + GetColumnOffsetPx(col);
                         var y = gridTopDots + row * (cellHeight + rowGapDots);
                         var layout = new RectangleF(x + padX + 40f, y + padY - 10f, innerWidth, innerHeight);
                         if (!useTwoLineLayout)
                         {
-                            DrawTrackedString(text ?? string.Empty, best, brush, layout);
+                            DrawTrackedString(cellText, best, brush, layout);
                             continue;
                         }
 

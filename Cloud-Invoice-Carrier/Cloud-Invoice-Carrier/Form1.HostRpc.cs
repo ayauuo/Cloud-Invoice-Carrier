@@ -96,8 +96,9 @@ public partial class Form1
         if (rangeType != "week" && rangeType != "month")
             rangeType = "day";
 
-        var (rows, totalPrintSheets, totalTestSheets) = CarrierRecordStore.GetPrintRecordsForView(parseDate, rangeType);
-        PostHostRpcResponse(id, true, new { rows, totalPrintSheets, totalTestSheets });
+        var (rows, totalPrintSheets, totalTestSheets, totalAmount, totalCount) =
+            CarrierRecordStore.GetPrintRecordsForView(parseDate, rangeType);
+        PostHostRpcResponse(id, true, new { rows, totalPrintSheets, totalTestSheets, totalAmount, totalCount });
     }
 
     private void HandleShutdown(string id)

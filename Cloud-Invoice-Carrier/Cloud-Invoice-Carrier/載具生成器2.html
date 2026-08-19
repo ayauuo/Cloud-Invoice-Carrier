@@ -131,18 +131,20 @@
     .card-templates {
       margin-top: 16px;
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
     }
     .card-option {
       width: 100%;
-      border-radius: 12px;
+      aspect-ratio: 1276 / 2008;
+      object-fit: cover;
+      border-radius: 10px;
       cursor: pointer;
       border: 3px solid transparent;
       box-shadow: 0 6px 18px rgba(0,0,0,0.5);
       transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
       background: rgba(0,0,0,0.2);
-      min-height: 120px;
+      min-height: 0;
     }
     .card-option:hover {
       transform: translateY(-2px);
@@ -161,8 +163,8 @@
       align-items: center;
     }
     .flip-card {
-      width: min(100%, 860px);
-      aspect-ratio: 1.58 / 1;
+      width: min(100%, 320px);
+      aspect-ratio: 1276 / 2008;
       perspective: 1400px;
       user-select: none;
       touch-action: pan-y;
@@ -373,7 +375,7 @@
     }
 
     .choose-screen__templates {
-      width: min(92vw, 900px);
+      width: min(96vw, 980px);
       margin-top: 0;
     }
 
@@ -400,24 +402,24 @@
 
     .choose-screen .card-templates {
       margin-top: 0;
-      gap: 14px;
+      gap: 8px;
     }
 
     .choose-screen .card-option {
-      min-height: 132px;
-      border-radius: 14px;
+      min-height: 0;
+      border-radius: 10px;
       background: #ebe4d8;
     }
 
     .choose-screen .preview-box {
-      width: min(98vw, 840px);
+      width: min(42vw, 280px);
       padding: 4px 6px;
     }
 
     .choose-screen .flip-card {
       width: 100%;
-      aspect-ratio: 1.58 / 1;
-      min-height: 420px;
+      aspect-ratio: 1276 / 2008;
+      min-height: 0;
       margin: 0 auto;
     }
 
@@ -434,9 +436,9 @@
 
     .choose-screen__preview-section {
       flex-shrink: 0;
-      margin-top: auto;
+      margin-top: 12px;
       margin-bottom: 100px;
-      width: min(98vw, 840px);
+      width: min(42vw, 280px);
       z-index: 1;
     }
 
@@ -471,23 +473,23 @@
       }
 
       .choose-screen__templates {
-        width: min(94vw, 920px);
+        width: min(96vw, 980px);
       }
 
       .choose-screen .card-option {
-        min-height: 148px;
+        min-height: 0;
       }
 
       .choose-screen .preview-box {
-        width: min(98vw, 880px);
+        width: min(46vw, 300px);
       }
 
       .choose-screen .flip-card {
-        min-height: 480px;
+        min-height: 0;
       }
 
       .choose-screen__preview-section {
-        width: min(98vw, 880px);
+        width: min(46vw, 300px);
       }
 
     }
@@ -794,7 +796,7 @@
   <div id="step2" class="choose-screen" style="display:none;" aria-label="選擇版型">
     <div class="choose-screen__bg" style="background-image:url('picture/ChoosePage/1.png')"></div>
     <div class="choose-screen__content">
-    <div class="choose-screen__templates">
+    <div class="choose-screen__templates" id="templateSelectionSection">
       <h2 class="title choose-screen__section-title">選擇卡面樣式</h2>
       <div class="choose-screen__templates-row">
         <div>
@@ -904,6 +906,7 @@
     <div id="secretMenu" class="secret-menu" style="display:none;">
       <div class="secret-title">管理選單</div>
       <button type="button" class="menu-btn" id="secretWatchDb">觀看資料庫</button>
+      <button type="button" class="menu-btn" id="secretTestEntry">測試（進入載具輸入）</button>
       <button type="button" class="menu-btn" id="secretExitApp" style="display:none;">關閉程式</button>
       <button type="button" class="menu-btn menu-btn--danger" id="secretShutdown">關機</button>
       <button type="button" class="menu-btn menu-btn--ghost" id="secretMenuClose">關閉</button>
@@ -925,6 +928,14 @@
           <button type="button" class="range-btn" data-range="month">月報表</button>
         </div>
         <div class="db-view__totals">
+          <div class="total-row">
+            <span class="total-label">總共金額</span>
+            <span class="total-value" id="dbTotalAmount">0</span>
+          </div>
+          <div class="total-row">
+            <span class="total-label">總共數量</span>
+            <span class="total-value" id="dbTotalCount">0</span>
+          </div>
           <div class="total-row">
             <span class="total-label">列印總張數</span>
             <span class="total-value" id="dbTotalPrint">0</span>
@@ -968,6 +979,8 @@
 
     // 圖片改由 https://app.local/ 直接讀取本機檔案（WebView2 虛擬網域，無需預載 base64）
     window.__ALLOW_BACK_TEMPLATE_SELECTION__ = true;
+    /** 版型選擇模式：'selection'=點選、'random'=隨機抽取（.env 的 CARRIER_TEMPLATE_MODE） */
+    window.__CARRIER_TEMPLATE_MODE__ = "selection";
     window.__PRINT_CARRIER_ON_BACK__ = true;
     window.__PRINT_CARRIER_BARCODE_ENABLED__ = true;
     window.__SAVE_PRINT_IMAGE__ = true;
@@ -984,14 +997,26 @@
       syncTemplateUI();
     }
 
+    function isRandomTemplateMode() {
+      return window.__CARRIER_TEMPLATE_MODE__ === "random";
+    }
+
+    function syncTemplateSelectionSectionVisibility() {
+      var section = document.getElementById("templateSelectionSection");
+      if (section) section.style.display = isRandomTemplateMode() ? "none" : "";
+    }
+
     function enterTemplateStepAfterGenerate() {
       showStep("template");
-      selectedFrontTemplate = 1;
-      selectedBackTemplate = 1;
+      selectedFrontTemplate = isRandomTemplateMode()
+        ? 1 + Math.floor(Math.random() * TEMPLATE_COUNT)
+        : 1;
+      selectedBackTemplate = selectedFrontTemplate;
       activeLandscapeStorageKey = selectedFrontTemplate;
       syncLandscapeUIFromKey(activeLandscapeStorageKey);
       setPreviewCardSide(false);
       ensureTemplateSelectorsReady();
+      syncTemplateSelectionSectionVisibility();
       syncTemplateUI();
       renderPreview(selectedFrontTemplate, selectedBackTemplate);
     }
@@ -1001,7 +1026,7 @@
     var paidAccumulated = 0;
     var billAcceptorEnabled = true;
     var kioskEnabled = true;
-    /** 本次流程是否為測試（雙擊空白鍵／無紙鈔機點擊進入） */
+    /** 本次流程是否為測試（雙擊空白鍵／管理選單測試按鈕／無紙鈔機點擊進入） */
     var sessionIsTest = false;
     var idleSpaceTapCount = 0;
     var idleSpaceLastAt = 0;
@@ -1049,16 +1074,16 @@
       paidAccumulated += amount;
       if (paidAccumulated >= 100) {
         paidAccumulated -= 100;
+        // 一滿額立刻關閉紙鈔機，不要等到 1 秒後才進輸入頁才關
+        postHostEvent({ "@event": "bill_acceptor_control", enabled: false });
         setTimeout(function() { goToCarrierInput(false); }, 1000);
       }
     }
 
     function syncBillAcceptorState() {
-      if (!billAcceptorEnabled) {
-        postHostEvent({ "@event": "bill_acceptor_control", enabled: false });
-        return;
-      }
-      postHostEvent({ "@event": "bill_acceptor_control", enabled: currentStep === "idle" });
+      // 離開待機 → 關收鈔；回到待機 → 開收鈔
+      var shouldEnable = !!billAcceptorEnabled && currentStep === "idle";
+      postHostEvent({ "@event": "bill_acceptor_control", enabled: shouldEnable });
     }
 
     function showStep(step) {
@@ -1078,6 +1103,7 @@
         idleScreen.classList.toggle("is-click-to-start", !billAcceptorEnabled);
       }
 
+      // 離開待機 → 關紙鈔機；回到待機 → 開紙鈔機
       syncBillAcceptorState();
       if (step === "idle") startIdleCarousel();
       if (step === "input") focusCarrierInput();
@@ -1160,14 +1186,31 @@
           if (typeof d.allowBackTemplateSelection === "boolean") {
             window.__ALLOW_BACK_TEMPLATE_SELECTION__ = d.allowBackTemplateSelection;
           }
+          if (typeof d.templateMode === "string") {
+            window.__CARRIER_TEMPLATE_MODE__ = d.templateMode === "random" ? "random" : "selection";
+            syncTemplateSelectionSectionVisibility();
+          }
           if (typeof d.printBarcodeOnBack === "boolean") {
             window.__PRINT_CARRIER_ON_BACK__ = d.printBarcodeOnBack;
           }
           if (typeof d.printBarcodeEnabled === "boolean") {
             window.__PRINT_CARRIER_BARCODE_ENABLED__ = d.printBarcodeEnabled;
           }
+          if (Array.isArray(d.frontTemplateImages) && d.frontTemplateImages.length) {
+            frontTemplateImages = d.frontTemplateImages;
+          }
+          if (Array.isArray(d.backTemplateImages) && d.backTemplateImages.length) {
+            backTemplateImages = d.backTemplateImages;
+          }
           syncBackTemplatePanelVisibility();
+          if (templateSelectorsReady) {
+            renderTemplateSelectors();
+            bindTemplateClickHandlers();
+          }
           syncTemplateUI();
+          if (currentStep === "template") {
+            renderPreview(selectedFrontTemplate, selectedBackTemplate);
+          }
         }
         if (d.type === "setCarrierLayoutConfig" && d.config) {
           window.__CARRIER_LAYOUT_CONFIG__ = d.config;
@@ -1410,6 +1453,7 @@
         format: "CODE39",
         width: 2,
         height: 70,
+        // 兔子 height: 70,
         // 巨人 height: 70,
         // 布丁狗 height: 80,
         margin: 6,
@@ -1433,19 +1477,19 @@
       }
     }
 
-    const FRONT_TEMPLATE_IMAGES = Array.from({ length: TEMPLATE_COUNT }, function(_, i) {
+    let frontTemplateImages = Array.from({ length: TEMPLATE_COUNT }, function(_, i) {
       return "picture/head/" + (i + 1) + ".jpg";
     });
-    const BACK_TEMPLATE_IMAGES = Array.from({ length: TEMPLATE_COUNT }, function(_, i) {
+    let backTemplateImages = Array.from({ length: TEMPLATE_COUNT }, function(_, i) {
       return "picture/back/" + (i + 1) + ".jpg";
     });
 
     function getFrontTemplateImagePath(idx) {
-      return FRONT_TEMPLATE_IMAGES[idx - 1] || FRONT_TEMPLATE_IMAGES[0];
+      return frontTemplateImages[idx - 1] || frontTemplateImages[0];
     }
 
     function getBackTemplateImagePath(idx) {
-      return BACK_TEMPLATE_IMAGES[idx - 1] || BACK_TEMPLATE_IMAGES[0];
+      return backTemplateImages[idx - 1] || backTemplateImages[0];
     }
 
     function syncBackTemplatePanelVisibility() {
@@ -1464,11 +1508,11 @@
       var backSelector = document.getElementById("backTemplateSelector");
       if (!frontSelector || !backSelector) return;
 
-      frontSelector.innerHTML = FRONT_TEMPLATE_IMAGES.map(function(path, i) {
+      frontSelector.innerHTML = frontTemplateImages.map(function(path, i) {
         var src = toAbsoluteAssetUrl(path);
         return '<img class="card-option" data-template="' + (i + 1) + '" alt="正面樣式' + (i + 1) + '" src="' + src + '" loading="eager" decoding="async" />';
       }).join("");
-      backSelector.innerHTML = BACK_TEMPLATE_IMAGES.map(function(path, i) {
+      backSelector.innerHTML = backTemplateImages.map(function(path, i) {
         var src = toAbsoluteAssetUrl(path);
         return '<img class="card-option" data-template="' + (i + 1) + '" alt="背面樣式' + (i + 1) + '" src="' + src + '" loading="eager" decoding="async" />';
       }).join("");
@@ -1559,20 +1603,36 @@
       return out;
     }
 
+    /**
+     * 將橫向產生的載具條碼順時針轉 90° 後畫上畫布，使條碼由上往下排列。
+     * (barcodeX, barcodeY) 為旋轉後外框的左上角。
+     */
+    function drawCarrierBarcode(ctx, loadedBarcode, barcodeX, barcodeY, bgWidth, widthPlus, heightPlus) {
+      var wPlus = widthPlus || 0;
+      var hPlus = heightPlus || 0;
+      var baseWidth = bgWidth * 1.0;
+      // 巨人 baseWidth = bgWidth * 0.51;
+      // 布丁狗 baseWidth = bgWidth * 0.55;
+      // 兔子 baseWidth = bgWidth * 1.0;
+      var baseScale = baseWidth / loadedBarcode.width;
+      var baseHeight = loadedBarcode.height * baseScale;
+      var targetWidth = baseWidth + wPlus;
+      var targetHeight = baseHeight + hPlus;
+
+      ctx.save();
+      ctx.translate(barcodeX + targetHeight, barcodeY);
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(loadedBarcode, 0, 0, targetWidth, targetHeight);
+      ctx.restore();
+    }
+
     function drawPreviewCanvas(canvas, loadedBg, loadedBarcode, includeCarrier, barcodeX, barcodeY, widthPlus, heightPlus) {
       canvas.width = loadedBg.width;
       canvas.height = loadedBg.height;
       var ctx = canvas.getContext("2d");
       ctx.drawImage(loadedBg, 0, 0, loadedBg.width, loadedBg.height);
       if (includeCarrier && loadedBarcode) {
-        var baseWidth = loadedBg.width * 0.52;
-        // 巨人 baseWidth = loadedBg.width * 0.51;
-        // 布丁狗 baseWidth = loadedBg.width * 0.55;
-        var baseScale = baseWidth / loadedBarcode.width;
-        var baseHeight = loadedBarcode.height * baseScale;
-        var targetWidth = baseWidth + widthPlus;
-        var targetHeight = baseHeight + heightPlus;
-        ctx.drawImage(loadedBarcode, barcodeX, barcodeY, targetWidth, targetHeight);
+        drawCarrierBarcode(ctx, loadedBarcode, barcodeX, barcodeY, loadedBg.width, widthPlus, heightPlus);
       }
     }
 
@@ -1728,15 +1788,8 @@
         ctx.drawImage(loadedBg, 0, 0, loadedBg.width, loadedBg.height);
 
         if (includeCarrier && loadedBarcode) {
-          const baseWidth = loadedBg.width * 0.52;
-          // 巨人 baseWidth = loadedBg.width * 0.52;
-          // 布丁狗 baseWidth = loadedBg.width * 0.55;
-          const baseScale = baseWidth / loadedBarcode.width;
-          const baseHeight = loadedBarcode.height * baseScale;
-          const targetWidth = baseWidth;
-          const targetHeight = baseHeight;
           const pos = getBarcodePosFromLayout(templateIndex, side, "print");
-          ctx.drawImage(loadedBarcode, pos.x, pos.y, targetWidth, targetHeight);
+          drawCarrierBarcode(ctx, loadedBarcode, pos.x, pos.y, loadedBg.width, 0, 0);
         }
 
         return rotateComposite90IfWiderThanTall(canvas);
@@ -1811,15 +1864,7 @@
           ctx.drawImage(bgImg, 0, 0, bgImg.width, bgImg.height);
 
           if (loadedBarcode) {
-            const baseWidth = bgImg.width * 0.55;
-            const baseScale = baseWidth / loadedBarcode.width;
-            const baseHeight = loadedBarcode.height * baseScale;
-            const targetWidth = baseWidth;
-            const targetHeight = baseHeight;
-            const x = 416;
-            const y = 88;
-
-            ctx.drawImage(loadedBarcode, x, y, targetWidth, targetHeight);
+            drawCarrierBarcode(ctx, loadedBarcode, 416, 88, bgImg.width, 0, 0);
           }
           resolve(rotateComposite90IfWiderThanTall(canvas));
         };
@@ -2197,6 +2242,12 @@
         openDbViewer();
       });
 
+      document.getElementById("secretTestEntry").addEventListener("click", function() {
+        closeSecretMenu();
+        // 與待機頁連續按兩下空白鍵相同：進入輸入頁，並記為測試資料
+        goToCarrierInput(true);
+      });
+
       document.getElementById("secretExitApp").addEventListener("click", function() {
         if (kioskEnabled) return;
         callHost("exit_app", {}).catch(function() {});
@@ -2241,6 +2292,8 @@
       var dbLoading = document.getElementById("dbViewLoading");
       var dbTotalPrint = document.getElementById("dbTotalPrint");
       var dbTotalTest = document.getElementById("dbTotalTest");
+      var dbTotalAmount = document.getElementById("dbTotalAmount");
+      var dbTotalCount = document.getElementById("dbTotalCount");
       var rangeType = "day";
 
       function formatDateLocal(d) {
@@ -2272,6 +2325,8 @@
           var rows = Array.isArray(data.rows) ? data.rows : [];
           dbTotalPrint.textContent = String(data.totalPrintSheets || 0);
           dbTotalTest.textContent = String(data.totalTestSheets || 0);
+          dbTotalAmount.textContent = String(data.totalAmount || 0);
+          dbTotalCount.textContent = String(data.totalCount || 0);
           if (rows.length === 0) {
             dbBody.innerHTML = '<tr><td colspan="7" class="db-view__empty">此範圍無資料</td></tr>';
             return;
@@ -2292,6 +2347,8 @@
           dbError.style.display = "block";
           dbTotalPrint.textContent = "0";
           dbTotalTest.textContent = "0";
+          dbTotalAmount.textContent = "0";
+          dbTotalCount.textContent = "0";
           dbBody.innerHTML = '<tr><td colspan="7" class="db-view__empty">讀取失敗</td></tr>';
         }).finally(function() {
           dbLoading.style.display = "none";

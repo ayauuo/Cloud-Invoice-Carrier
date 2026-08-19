@@ -103,19 +103,21 @@ VALUES (@date, @time, @projectName, @machineName, @amount, @templateName, @creat
         }
     }
 
-    public static (List<PrintRecordViewRow> Rows, int TotalPrintSheets, int TotalTestSheets) GetPrintRecordsForView(
+    public static (List<PrintRecordViewRow> Rows, int TotalPrintSheets, int TotalTestSheets, int TotalAmount, int TotalCount) GetPrintRecordsForView(
         DateTime date,
         string rangeType)
     {
         var rows = new List<PrintRecordViewRow>();
         var totalPrintSheets = 0;
         var totalTestSheets = 0;
+        var totalAmount = 0;
+        var totalCount = 0;
 
         try
         {
             var path = GetDbPath();
             if (!File.Exists(path))
-                return (rows, 0, 0);
+                return (rows, 0, 0, 0, 0);
 
             var dateStr = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
             var dateFilter = rangeType switch
@@ -155,7 +157,10 @@ ORDER BY Date, Time, Id";
             {
                 var copies = reader.IsDBNull(7) ? 1 : reader.GetInt32(7);
                 var isTest = !reader.IsDBNull(8) && reader.GetInt32(8) != 0;
+                var amount = reader.GetInt32(5);
                 totalPrintSheets += copies;
+                totalAmount += amount;
+                totalCount += 1;
                 if (isTest)
                     totalTestSheets += copies;
 
@@ -166,7 +171,7 @@ ORDER BY Date, Time, Id";
                     Time = reader.GetString(2),
                     ProjectName = reader.GetString(3),
                     MachineName = reader.GetString(4),
-                    Amount = reader.GetInt32(5),
+                    Amount = amount,
                     TemplateName = reader.GetString(6),
                     Copies = copies,
                     IsTest = isTest
@@ -178,7 +183,7 @@ ORDER BY Date, Time, Id";
             // 回傳空
         }
 
-        return (rows, totalPrintSheets, totalTestSheets);
+        return (rows, totalPrintSheets, totalTestSheets, totalAmount, totalCount);
     }
 
     public static string GetDbPathForDisplay() => GetDbPath();

@@ -82,6 +82,9 @@ internal static class AppEnvConfig
     /// <summary>姓名貼文字是否旋轉 180 度。</summary>
     public static bool NameLabelRotate180 { get; private set; } = false;
 
+    /// <summary>姓名貼輸入框預設文字（支援 \n 換行）。</summary>
+    public static string NameLabelDefaultText { get; private set; } = "";
+
     /// <summary>TSPL 列印速度（ips）。0 表示不下指令，沿用機器預設。</summary>
     public static int TscSpeed { get; private set; } = 0;
 
@@ -120,6 +123,9 @@ internal static class AppEnvConfig
 
     /// <summary>是否允許在 UI 分別選擇正反面樣式。</summary>
     public static bool CarrierAllowBackTemplateSelection { get; private set; } = true;
+
+    /// <summary>版型選擇模式：selection=使用者點選、random=進入選版頁時隨機抽取。</summary>
+    public static string CarrierTemplateMode { get; private set; } = "selection";
 
     /// <summary>是否顯示「列印內容／列印方式／雙面翻面補償」選項列（隱藏時使用 carrier-layout.json 預設）。</summary>
     public static bool CarrierShowDuplexFlipCompensation { get; private set; } = true;
@@ -328,6 +334,10 @@ internal static class AppEnvConfig
                     || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
                     || value.Equals("on", StringComparison.OrdinalIgnoreCase);
                 break;
+            case "NAME_LABEL_DEFAULT_TEXT":
+            case "TSC_NAME_LABEL_DEFAULT_TEXT":
+                NameLabelDefaultText = value.Replace("\\n", "\n", StringComparison.Ordinal);
+                break;
             case "TSC_SPEED":
                 if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var speed) && speed >= 0)
                     TscSpeed = speed;
@@ -412,6 +422,15 @@ internal static class AppEnvConfig
                     || value.Equals("true", StringComparison.OrdinalIgnoreCase)
                     || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
                     || value.Equals("on", StringComparison.OrdinalIgnoreCase);
+                break;
+            case "CARRIER_TEMPLATE_MODE":
+            case "CARRIER_TEMPLATE_SELECT_MODE":
+                CarrierTemplateMode =
+                    value.Equals("random", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("隨機", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("抽取", StringComparison.OrdinalIgnoreCase)
+                    ? "random"
+                    : "selection";
                 break;
             case "CARRIER_SHOW_DUPLEX_FLIP_COMPENSATION":
             case "CARRIER_SHOW_LANDSCAPE_ANNOT":

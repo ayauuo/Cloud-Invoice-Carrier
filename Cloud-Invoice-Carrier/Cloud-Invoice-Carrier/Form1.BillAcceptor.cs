@@ -234,13 +234,24 @@ public partial class Form1
 
     private void OnBillReceived(object? sender, int amount)
     {
-        if (!_paymentsEnabled)
+        // 僅待機頁（驗鈔器啟用中）才轉送付款；離開待機後即使硬體晚回也一律丟棄
+        if (!_paymentsEnabled || !_billAcceptorValidatorEnabled)
+        {
+            LogBillAcceptor(
+                $"忽略紙鈔事件 {amount} 元（payments={_paymentsEnabled}，validator={_billAcceptorValidatorEnabled}）");
             return;
+        }
 
         BeginInvoke(() =>
         {
             try
             {
+                if (!_paymentsEnabled || !_billAcceptorValidatorEnabled)
+                {
+                    LogBillAcceptor($"忽略延遲紙鈔事件 {amount} 元（已離開待機頁）");
+                    return;
+                }
+
                 if (webView21.CoreWebView2 == null)
                     return;
 
@@ -289,8 +300,8 @@ public partial class Form1
     {
         _billAcceptorValidatorEnabled = enabled;
         LogBillAcceptor(enabled
-            ? "網頁要求啟用驗钞器（僅待機頁會收鈔）"
-            : "網頁要求停用驗钞器（非待機頁或功能關閉）");
+            ? "網頁要求啟用驗钞器（回到待機頁 → 再開啟收鈔）"
+            : "網頁要求停用驗钞器（離開待機頁 → 關閉收鈔）");
         ApplyBillAcceptorValidatorState();
     }
 
@@ -306,9 +317,15 @@ public partial class Form1
             }
 
             if (_billAcceptorValidatorEnabled)
+            {
                 _billAcceptor.EnableValidator();
+                LogBillAcceptor("驗钞器硬體已啟用（待機頁可收鈔）");
+            }
             else
+            {
                 _billAcceptor.DisableValidator();
+                LogBillAcceptor("驗钞器硬體已停用（非待機頁不收鈔）");
+            }
         }
         catch (Exception ex)
         {
@@ -321,6 +338,7 @@ public partial class Form1
         if (!_billAcceptorConfigEnabled || AppEnvConfig.Mode != AppEnvConfig.AppMode.Carrier)
             return;
 
+        // 網頁初次載入預設在待機頁；真正開關改由 showStep → bill_acceptor_control 控制
         _billAcceptorValidatorEnabled = true;
         ApplyBillAcceptorValidatorState();
     }
@@ -346,6 +364,16 @@ public partial class Form1
         try
         {
             using var jsonDoc = JsonDocument.Parse(json);
+
+            // postMessage(JSON.stringify(...)) 時，最外層可能還是字串（WebMessageAsJson）
+            if (jsonDoc.RootElement.ValueKind == JsonValueKind.String)
+            {
+                var inner = jsonDoc.RootElement.GetString();
+                if (!string.IsNullOrWhiteSpace(inner))
+                    return TryHandleBillAcceptorWebMessage(inner);
+                return false;
+            }
+
             if (!jsonDoc.RootElement.TryGetProperty("@event", out var eventProp))
                 return false;
 

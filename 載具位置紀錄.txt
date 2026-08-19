@@ -1,0 +1,8 @@
+布丁狗
+
+      "front": { "previewBarcodeX": 500, "previewBarcodeY": 567, "printBarcodeX": 500, "printBarcodeY": 567 },
+      "back": { "previewBarcodeX": 500, "previewBarcodeY": 567, "printBarcodeX": 500, "printBarcodeY": 567 }
+
+兔子
+      "front": { "previewBarcodeX": 680, "previewBarcodeY": 240, "printBarcodeX": 680, "printBarcodeY": 240 },
+      "back": { "previewBarcodeX": 680, "previewBarcodeY": 240, "printBarcodeX": 680, "printBarcodeY": 240 }
