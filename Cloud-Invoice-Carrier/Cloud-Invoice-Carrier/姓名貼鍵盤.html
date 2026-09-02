@@ -66,7 +66,7 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 16vh;
+      height: 9vh;
       z-index: 1;
       display: flex;
       flex-direction: column;
@@ -77,17 +77,17 @@
     }
     .input-screen__title {
       margin: 0;
-      font-size: clamp(34px, 5.4vw, 58px);
+      font-size: clamp(26px, 3.8vw, 42px);
       font-weight: 800;
       color: #fff;
       letter-spacing: 3px;
-      -webkit-text-stroke: 5px var(--pink-deep);
+      -webkit-text-stroke: 4px var(--pink-deep);
       paint-order: stroke fill;
-      text-shadow: 0 4px 0 rgba(180, 20, 110, 0.35);
+      text-shadow: 0 3px 0 rgba(180, 20, 110, 0.35);
     }
     .input-screen__subtitle {
-      margin: 6px 0 0;
-      font-size: clamp(16px, 2.2vw, 22px);
+      margin: 2px 0 0;
+      font-size: clamp(13px, 1.7vw, 18px);
       font-weight: 700;
       color: #fff;
       letter-spacing: 1px;
@@ -99,9 +99,9 @@
       z-index: 1;
       display: flex;
       flex-direction: column;
-      padding: 17vh 4vw 16vh;
+      padding: 9.5vh 3vw 14vh;
       box-sizing: border-box;
-      gap: 8px;
+      gap: 6px;
       min-height: 0;
     }
     .input-top {
@@ -109,7 +109,7 @@
       justify-content: center;
       flex: 1 1 auto;
       min-height: 0;
-      max-height: 30vh;
+      max-height: 44vh;
     }
     #carrierInput {
       position: absolute;
@@ -147,7 +147,7 @@
     }
     .ime-composition { display: none; }
     .preview-box {
-      width: min(92vw, 760px);
+      width: min(96vw, 980px);
       height: 100%;
       border: none;
       background: transparent;
@@ -159,17 +159,15 @@
     }
     .preview-head {
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       align-items: center;
-      margin-bottom: 6px;
+      margin-bottom: 2px;
       gap: 6px;
       flex-shrink: 0;
+      min-height: 0;
     }
     .preview-title {
-      font-size: 16px;
-      font-weight: 800;
-      letter-spacing: 1px;
-      color: var(--pink-deep);
+      display: none;
     }
     .preview-meta {
       font-size: 12px;
@@ -1171,7 +1169,7 @@
       function drawPreview(bg) {
         var ctx = previewCanvas.getContext("2d");
         var cfg = labelLayout || {
-          widthMm: 110, heightMm: 135, previewWidthMm: 100, previewHeightMm: 160,
+          widthMm: 100, heightMm: 160, previewWidthMm: 100, previewHeightMm: 160,
           barcodeScale: 1.0, barcodeWidthMm: 0, barcodeHeightMm: 0,
           barcodeOffsetXMm: 0, barcodeOffsetYMm: 0,
           columns: 3, rows: 6,
@@ -1221,8 +1219,8 @@
         var extraLayoutY = -10;
         var trackingPx = charSpaceDots;
 
-        var maxPreviewW = 760;
-        var maxPreviewH = 900;
+        var maxPreviewW = 980;
+        var maxPreviewH = 1200;
         var viewScale = Math.min(maxPreviewW / wDots, maxPreviewH / hDots);
         var canvasW = Math.max(1, Math.round(wDots * viewScale));
         var canvasH = Math.max(1, Math.round(hDots * viewScale));

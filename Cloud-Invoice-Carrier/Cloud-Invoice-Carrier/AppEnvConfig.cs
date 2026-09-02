@@ -79,6 +79,9 @@ internal static class AppEnvConfig
     /// <summary>載具條碼垂直位移（毫米）。正值往下、負值往上。</summary>
     public static double NameLabelBarcodeOffsetYMm { get; private set; } = 0;
 
+    /// <summary>實印整塊垂直位移（毫米）。只影響送印，不改裁切與預覽。正值往下、負值往上。</summary>
+    public static double NameLabelPrintOffsetYMm { get; private set; } = 0;
+
     /// <summary>姓名貼排版比例（字與間距一起縮放）。1.0 為原始比例。</summary>
     public static double NameLabelLayoutScale { get; private set; } = 1.0;
 
@@ -112,6 +115,9 @@ internal static class AppEnvConfig
     /// <summary>TSPL 濃度（1-15）。0 表示不下指令，沿用機器預設。</summary>
     public static int TscDensity { get; private set; } = 0;
 
+    /// <summary>姓名貼是否使用感熱轉印（碳帶）。false 為直接感熱、無碳帶。</summary>
+    public static bool NameLabelThermalTransfer { get; private set; } = true;
+
     /// <summary>TSPL CODEPAGE（例如 UTF-8）。空字串表示不下指令。</summary>
     public static string TscCodePage { get; private set; } = string.Empty;
 
@@ -139,7 +145,10 @@ internal static class AppEnvConfig
     /// <summary>黑標高度（毫米），僅 blackmark 模式使用。</summary>
     public static double TscBlackMarkMm { get; private set; } = 2;
 
-    /// <summary>黑標感應後裁切前額外走紙步數（dots）。</summary>
+    /// <summary>找到黑標後再多走的長度（毫米）。對應 TSPL BLINE 第二個參數。</summary>
+    public static double TscBlackMarkExtraMm { get; private set; } = 0;
+
+    /// <summary>黑標感應後裁切前額外走紙步數（dots）。大於 0 時會改下 FEED，不再自動找黑標。</summary>
     public static int TscBlackMarkPostFeedSteps { get; private set; } = 0;
 
     /// <summary>是否允許在 UI 分別選擇正反面樣式。</summary>
@@ -332,6 +341,11 @@ internal static class AppEnvConfig
                 if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var barcodeOy))
                     NameLabelBarcodeOffsetYMm = Math.Clamp(barcodeOy, -200, 200);
                 break;
+            case "NAME_LABEL_PRINT_OFFSET_Y_MM":
+            case "TSC_NAME_PRINT_OFFSET_Y_MM":
+                if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var printOy))
+                    NameLabelPrintOffsetYMm = Math.Clamp(printOy, -200, 200);
+                break;
             case "NAME_LABEL_LAYOUT_SCALE":
             case "TSC_NAME_LAYOUT_SCALE":
                 if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var layoutScale) && layoutScale > 0)
@@ -366,6 +380,12 @@ internal static class AppEnvConfig
                     NameLabelMode = NameLabelPrintMode.Bitmap;
                 else
                     NameLabelMode = NameLabelPrintMode.Auto;
+                break;
+            case "NAME_LABEL_PRINT_METHOD":
+            case "TSC_PRINT_METHOD":
+            case "TSC_RIBBON":
+            case "NAME_LABEL_RIBBON":
+                NameLabelThermalTransfer = IsThermalTransferSetting(value);
                 break;
             case "NAME_LABEL_TSPL_FONT":
             case "TSC_NAME_LABEL_TSPL_FONT":
@@ -458,6 +478,19 @@ internal static class AppEnvConfig
                 if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var blineMm) && blineMm >= 0)
                     TscBlackMarkMm = blineMm;
                 break;
+            case "TSC_BLACK_MARK_EXTRA_MM":
+            case "TSC_BLINE_OFFSET_MM":
+            case "LABEL_BLACK_MARK_EXTRA_MM":
+                if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var extraMm))
+                    TscBlackMarkExtraMm = Math.Clamp(extraMm, -50, 50);
+                break;
+            case "TSC_BLACK_MARK_EXTRA_DOTS":
+                if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var extraDots))
+                {
+                    var extraDpi = Math.Max(72, TscDpi);
+                    TscBlackMarkExtraMm = Math.Clamp(extraDots * 25.4 / extraDpi, -50, 50);
+                }
+                break;
             case "TSC_BLACK_MARK_POST_FEED_STEPS":
             case "LABEL_BLACK_MARK_POST_FEED_STEPS":
             case "TSC_BLACKMARK_POST_FEED_STEPS":
@@ -545,6 +578,26 @@ internal static class AppEnvConfig
                     || value.Equals("on", StringComparison.OrdinalIgnoreCase);
                 break;
         }
+    }
+
+    private static bool IsThermalTransferSetting(string value)
+    {
+        var v = (value ?? string.Empty).Trim();
+        if (v.Length == 0)
+            return true;
+
+        if (v.Equals("direct_thermal", StringComparison.OrdinalIgnoreCase)
+            || v.Equals("direct-thermal", StringComparison.OrdinalIgnoreCase)
+            || v.Equals("directthermal", StringComparison.OrdinalIgnoreCase)
+            || v.Equals("dt", StringComparison.OrdinalIgnoreCase)
+            || v.Equals("off", StringComparison.OrdinalIgnoreCase)
+            || v.Equals("false", StringComparison.OrdinalIgnoreCase)
+            || v.Equals("0", StringComparison.OrdinalIgnoreCase)
+            || v.Equals("no", StringComparison.OrdinalIgnoreCase)
+            || v.Equals("感熱", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return true;
     }
 
     private static readonly JsonSerializerOptions LayoutJsonOptions = new()

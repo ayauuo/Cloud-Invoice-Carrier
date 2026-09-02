@@ -183,7 +183,7 @@ internal static class TscTsplNameStickerPrinter
         switch (paperSensorMode)
         {
             case AppEnvConfig.PaperSensorMode.BlackMark:
-                WriteCmd(FormattableString.Invariant($"BLINE {Math.Max(0, blackMarkMm):0.###} mm,0 mm\r\n"));
+                WriteCmd(FormattableString.Invariant($"BLINE {Math.Max(0, blackMarkMm):0.###} mm,{AppEnvConfig.TscBlackMarkExtraMm:0.###} mm\r\n"));
                 break;
             case AppEnvConfig.PaperSensorMode.Continuous:
                 WriteCmd("GAP 0 mm,0 mm\r\n");
@@ -203,6 +203,7 @@ internal static class TscTsplNameStickerPrinter
         WriteCmd("DIRECTION 1\r\n");
         WriteCmd("REFERENCE 0,0\r\n");
         WriteCmd("SET TEAR ON\r\n");
+        WriteCmd(AppEnvConfig.NameLabelThermalTransfer ? "SET RIBBON ON\r\n" : "SET RIBBON OFF\r\n");
         WriteCmd("CLS\r\n");
 
         // 條碼需與文字一起旋轉／對位，有載具時一律走 BITMAP。
@@ -281,10 +282,22 @@ internal static class TscTsplNameStickerPrinter
         IReadOnlyList<int> columnOffsetsXPx,
         bool rotate180)
     {
-        // 先在真實寬度畫布排版，再貼到 32 對齊畫布，避免破壞版面比例。
-        using var realBmp = new Bitmap(widthDots, heightDots, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-        realBmp.SetResolution(dpi, dpi);
-        using (var g = Graphics.FromImage(realBmp))
+        var layoutWidthMm = previewWidthMm > 0 ? previewWidthMm : printWidthMm;
+        var layoutHeightMm = previewHeightMm > 0 ? previewHeightMm : printHeightMm;
+        var layoutW = Math.Max(32, (int)Math.Round(layoutWidthMm / 25.4 * dpi, MidpointRounding.AwayFromZero));
+        var layoutH = Math.Max(32, (int)Math.Round(layoutHeightMm / 25.4 * dpi, MidpointRounding.AwayFromZero));
+        var layoutMarginDots = Math.Max(2, (int)Math.Round(Math.Min(layoutW, layoutH) * 0.02, MidpointRounding.AwayFromZero));
+        var layoutTotalUsableH = Math.Max(16, layoutH - layoutMarginDots * 2);
+        var layoutTargetGridH = gridHeightMm > 0
+            ? Math.Max(16, (int)Math.Round(gridHeightMm / 25.4 * dpi, MidpointRounding.AwayFromZero))
+            : layoutTotalUsableH;
+        var layoutGridH = Math.Min(layoutTotalUsableH, layoutTargetGridH);
+        var layoutGridTop = layoutMarginDots + Math.Max(0, layoutTotalUsableH - layoutGridH);
+
+        // 先在 100×160 mm 座標排版（與預覽相同），再貼到送印畫布。
+        using var layoutBmp = new Bitmap(layoutW, layoutH, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        layoutBmp.SetResolution(dpi, dpi);
+        using (var g = Graphics.FromImage(layoutBmp))
         {
             g.Clear(Color.White);
             // 先以高品質灰階渲染字形，再交給後段 threshold 做 1-bit 二值化。
@@ -295,8 +308,8 @@ internal static class TscTsplNameStickerPrinter
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
 
             DrawCarrierBarcode(
-                g, carrier, widthDots, heightDots, dpi,
-                printWidthMm, printHeightMm, previewWidthMm, previewHeightMm, gridHeightMm,
+                g, carrier, layoutW, layoutH, dpi,
+                layoutWidthMm, layoutHeightMm, layoutWidthMm, layoutHeightMm, gridHeightMm,
                 AppEnvConfig.NameLabelBarcodeScale,
                 AppEnvConfig.NameLabelBarcodeWidthMm,
                 AppEnvConfig.NameLabelBarcodeHeightMm,
@@ -314,8 +327,8 @@ internal static class TscTsplNameStickerPrinter
                 return 0;
             }
 
-            var availableWidth = Math.Max(8f, widthDots - marginDots * 2f - colGapDots * (cols - 1));
-            var availableHeight = Math.Max(8f, gridHeightDots - rowGapDots * (rowCount - 1));
+            var availableWidth = Math.Max(8f, layoutW - layoutMarginDots * 2f - colGapDots * (cols - 1));
+            var availableHeight = Math.Max(8f, layoutGridH - rowGapDots * (rowCount - 1));
             var cellWidth = Math.Max(4f, availableWidth / cols);
             var cellHeight = Math.Max(4f, availableHeight / rowCount);
             var scale = (float)Math.Clamp(layoutScale, 0.001, 2.0);
@@ -480,8 +493,8 @@ internal static class TscTsplNameStickerPrinter
                         var cellText = GetCellText(row, col);
                         if (string.IsNullOrEmpty(cellText))
                             continue;
-                        var x = marginDots + col * (cellWidth + colGapDots) + GetColumnOffsetPx(col);
-                        var y = gridTopDots + row * (cellHeight + rowGapDots);
+                        var x = layoutMarginDots + col * (cellWidth + colGapDots) + GetColumnOffsetPx(col);
+                        var y = layoutGridTop + row * (cellHeight + rowGapDots);
                         var layout = new RectangleF(x + padX + 40f, y + padY - 10f, innerWidth, innerHeight);
                         if (!useTwoLineLayout)
                         {
@@ -510,6 +523,19 @@ internal static class TscTsplNameStickerPrinter
             }
         }
 
+        using var realBmp = new Bitmap(widthDots, heightDots, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        realBmp.SetResolution(dpi, dpi);
+        using (var gPrint = Graphics.FromImage(realBmp))
+        {
+            gPrint.Clear(Color.White);
+            gPrint.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
+            gPrint.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+            gPrint.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+            var originX = (widthDots - layoutW) / 2;
+            var originY = 0;
+            gPrint.DrawImageUnscaled(layoutBmp, originX, originY);
+        }
+
         // 部分機種 DMA 以 32-bit 對齊讀取，寬度補到 32 的倍數可避免行尾錯讀雜線。
         var alignedWidth = ((widthDots + 31) / 32) * 32;
         var alignedBmp = new Bitmap(alignedWidth, heightDots, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
@@ -522,6 +548,33 @@ internal static class TscTsplNameStickerPrinter
             gAligned.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
             gAligned.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
             gAligned.DrawImageUnscaled(realBmp, 0, 0);
+        }
+
+        // 實印整塊平移（預覽座標，旋轉前）：EXTRA 負值會自動往下補，PRINT_OFFSET 再微調。
+        // 裁切仍只看 EXTRA_MM；預覽畫面不會套用這段位移。
+        var extraMm = AppEnvConfig.TscBlackMarkExtraMm;
+        var printOffsetYMm = AppEnvConfig.NameLabelPrintOffsetYMm;
+        var extraDots = Math.Abs(extraMm) >= 0.05
+            ? (int)Math.Round(extraMm / 25.4 * dpi, MidpointRounding.AwayFromZero)
+            : 0;
+        var offsetDots = Math.Abs(printOffsetYMm) >= 0.05
+            ? (int)Math.Round(printOffsetYMm / 25.4 * dpi, MidpointRounding.AwayFromZero)
+            : 0;
+        var shiftY = -extraDots + offsetDots;
+        if (shiftY != 0)
+        {
+            var shifted = new Bitmap(alignedBmp.Width, alignedBmp.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            shifted.SetResolution(dpi, dpi);
+            using (var gShift = Graphics.FromImage(shifted))
+            {
+                gShift.Clear(Color.White);
+                gShift.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
+                gShift.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                gShift.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+                gShift.DrawImageUnscaled(alignedBmp, 0, shiftY);
+            }
+            alignedBmp.Dispose();
+            alignedBmp = shifted;
         }
 
         // 先排版完成再整張旋轉，能減少逐字旋轉帶來的鋸齒雜訊。
@@ -624,8 +677,8 @@ internal static class TscTsplNameStickerPrinter
     }
 
     /// <summary>
-    /// 先用預覽底圖座標（與 HTML drawCarrierBarcodeOnPreview 相同公式）算出條碼框，
-    /// 再等比對應到實印畫布，避免 100×160 預覽 vs 110×135 實印造成位置／大小跑掉。
+    /// 在預覽底圖座標（與 HTML drawCarrierBarcodeOnPreview 相同）1:1 畫條碼。
+    /// 呼叫端再把整張預覽畫布貼到送印尺寸，避免 X/Y 非等比拉伸。
     /// </summary>
     private static void DrawCarrierBarcode(
         Graphics g,
@@ -708,13 +761,11 @@ internal static class TscTsplNameStickerPrinter
 
         var barX = (layoutW - barW) / 2.0 + barcodeOffsetXMm / 25.4 * dpi;
         var barY = barY0 + Math.Max(0.0, (barAreaH - barH) / 2.0) + barcodeOffsetYMm / 25.4 * dpi;
-        var scaleX = printWidthDots / (double)layoutW;
-        var scaleY = printHeightDots / (double)layoutH;
         var dest = new Rectangle(
-            (int)Math.Round(barX * scaleX, MidpointRounding.AwayFromZero),
-            (int)Math.Round(barY * scaleY, MidpointRounding.AwayFromZero),
-            Math.Max(8, (int)Math.Round(barW * scaleX, MidpointRounding.AwayFromZero)),
-            Math.Max(8, (int)Math.Round(barH * scaleY, MidpointRounding.AwayFromZero)));
+            (int)Math.Round(barX, MidpointRounding.AwayFromZero),
+            (int)Math.Round(barY, MidpointRounding.AwayFromZero),
+            Math.Max(8, (int)Math.Round(barW, MidpointRounding.AwayFromZero)),
+            Math.Max(8, (int)Math.Round(barH, MidpointRounding.AwayFromZero)));
 
         var oldSmooth = g.SmoothingMode;
         var oldInterp = g.InterpolationMode;
