@@ -140,6 +140,9 @@
     <Content Include="picture\ChoosePage\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="picture\preview\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="..\picture\head\**\*" Link="picture\head\%(RecursiveDir)%(Filename)%(Extension)" Condition="Exists('..\picture\head')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -156,6 +159,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="..\picture\ChoosePage\**\*" Link="picture\ChoosePage\%(RecursiveDir)%(Filename)%(Extension)" Condition="Exists('..\picture\ChoosePage')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\picture\preview\**\*" Link="picture\preview\%(RecursiveDir)%(Filename)%(Extension)" Condition="Exists('..\picture\preview')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

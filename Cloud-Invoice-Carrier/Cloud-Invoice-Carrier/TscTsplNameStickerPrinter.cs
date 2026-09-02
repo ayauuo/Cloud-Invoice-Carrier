@@ -3,7 +3,7 @@ using System.IO;
 
 namespace Cloud_Invoice_Carrier;
 
-/// <summary>姓名貼 TSPL 送印：英文優先 TEXT，中文自動回退 BITMAP。</summary>
+/// <summary>姓名貼 TSPL 送印：英文優先 TEXT，中文自動回退 BITMAP；載具以 CODE39 畫入同一張標籤。</summary>
 internal static class TscTsplNameStickerPrinter
 {
     static TscTsplNameStickerPrinter()
@@ -13,10 +13,13 @@ internal static class TscTsplNameStickerPrinter
 
     public static void Print(
         string text,
+        string? carrier,
         string windowsPrinterName,
         int dpi,
         double widthMm,
         double heightMm,
+        double previewWidthMm,
+        double previewHeightMm,
         double gapMm,
         int columns,
         int rows,
@@ -44,12 +47,12 @@ internal static class TscTsplNameStickerPrinter
         double blackMarkMm,
         int blackMarkPostFeedSteps)
     {
-        if (string.IsNullOrWhiteSpace(text))
+        if (string.IsNullOrWhiteSpace(text) && string.IsNullOrWhiteSpace(carrier))
             throw new ArgumentException("列印內容不可為空白。", nameof(text));
 
         var encoding = ResolveTsplEncoding(codePage, charSet);
         var payload = BuildTsplPayload(
-            text, dpi, widthMm, heightMm, gapMm, columns, rows, columnGapMm, rowGapMm, gridHeightMm, layoutScale, charSpacingPx, firstColumnOffsetXPx, columnOffsetsXPx,
+            text, carrier, dpi, widthMm, heightMm, previewWidthMm, previewHeightMm, gapMm, columns, rows, columnGapMm, rowGapMm, gridHeightMm, layoutScale, charSpacingPx, firstColumnOffsetXPx, columnOffsetsXPx,
             printMode, tsplFontName, bitmapFontFamily, rotate180, speed, density, codePage, charSet, bitmapThreshold, bitmapBoldPx, debugSaveBitmap, debugBitmapPath, cutAfterPrint, paperSensorMode, blackMarkMm, blackMarkPostFeedSteps, encoding);
         RawPrinterHelper.SendBytes(windowsPrinterName, payload, "NameSticker");
     }
@@ -86,9 +89,12 @@ internal static class TscTsplNameStickerPrinter
 
     internal static byte[] BuildTsplPayload(
         string text,
+        string? carrier,
         int dpi,
         double widthMm,
         double heightMm,
+        double previewWidthMm,
+        double previewHeightMm,
         double gapMm,
         int columns,
         int rows,
@@ -147,9 +153,12 @@ internal static class TscTsplNameStickerPrinter
         var cellW = Math.Max(8, usableW / cols);
         var cellH = Math.Max(8, usableH / rowCount);
         var safeText = (text ?? string.Empty).Trim().Replace("\"", "'");
-        var textLines = safeText
-            .Replace("\r\n", "\n")
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var safeCarrier = NormalizeCarrierForBarcode(carrier);
+        var textLines = string.IsNullOrEmpty(safeText)
+            ? Array.Empty<string>()
+            : safeText
+                .Replace("\r\n", "\n")
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var multiLinePerRow = textLines.Length > 1;
         string GetCellText(int row, int col)
         {
@@ -158,6 +167,7 @@ internal static class TscTsplNameStickerPrinter
             return safeText;
         }
 
+        var hasBarcode = !string.IsNullOrEmpty(safeCarrier);
         var hasNonAscii = safeText.Any(ch => ch > 127);
         var fontName = string.IsNullOrWhiteSpace(tsplFontName) ? "TSS24.BF2" : tsplFontName.Trim().Replace("\"", "");
         var textRotation = rotate180 ? 180 : 0;
@@ -195,7 +205,8 @@ internal static class TscTsplNameStickerPrinter
         WriteCmd("SET TEAR ON\r\n");
         WriteCmd("CLS\r\n");
 
-        var useTextMode = printMode switch
+        // 條碼需與文字一起旋轉／對位，有載具時一律走 BITMAP。
+        var useTextMode = !hasBarcode && printMode switch
         {
             AppEnvConfig.NameLabelPrintMode.Text => true,
             AppEnvConfig.NameLabelPrintMode.Bitmap => false,
@@ -221,7 +232,10 @@ internal static class TscTsplNameStickerPrinter
         else
         {
             // 中文或混合文字：改用 BITMAP，避免印表機端中文字型不支援造成空白。
-            using var bmp = RenderLabelBitmap(safeText, textLines, multiLinePerRow, wDots, hDots, dpi, cols, rowCount, colGapDots, rowGapDots, marginDots, gridTop, gridH, scale, charSpacingPx, bitmapFontFamily, firstColumnOffsetXPx, columnOffsetsXPx, rotate180);
+            using var bmp = RenderLabelBitmap(
+                safeText, safeCarrier, textLines, multiLinePerRow,
+                wDots, hDots, dpi, widthMm, heightMm, previewWidthMm, previewHeightMm, gridHeightMm,
+                cols, rowCount, colGapDots, rowGapDots, marginDots, gridTop, gridH, scale, charSpacingPx, bitmapFontFamily, firstColumnOffsetXPx, columnOffsetsXPx, rotate180);
             var widthBytes = bmp.Width / 8;
             if (debugSaveBitmap)
                 SaveBitmapForDebug(bmp, debugBitmapPath);
@@ -242,11 +256,17 @@ internal static class TscTsplNameStickerPrinter
 
     private static Bitmap RenderLabelBitmap(
         string text,
+        string? carrier,
         string[] textLines,
         bool multiLinePerRow,
         int widthDots,
         int heightDots,
         int dpi,
+        double printWidthMm,
+        double printHeightMm,
+        double previewWidthMm,
+        double previewHeightMm,
+        double gridHeightMm,
         int cols,
         int rowCount,
         int colGapDots,
@@ -274,6 +294,10 @@ internal static class TscTsplNameStickerPrinter
             g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
 
+            DrawCarrierBarcode(g, carrier, widthDots, heightDots, dpi, printWidthMm, printHeightMm, previewWidthMm, previewHeightMm, gridHeightMm);
+
+            if (!string.IsNullOrWhiteSpace(text))
+            {
             int GetColumnOffsetPx(int col)
             {
                 if (columnOffsetsXPx != null && col >= 0 && col < columnOffsetsXPx.Count)
@@ -476,6 +500,7 @@ internal static class TscTsplNameStickerPrinter
                 layoutFormat.Dispose();
                 best.Dispose();
             }
+            }
         }
 
         // 部分機種 DMA 以 32-bit 對齊讀取，寬度補到 32 的倍數可避免行尾錯讀雜線。
@@ -571,4 +596,219 @@ internal static class TscTsplNameStickerPrinter
             // 除錯存檔不可阻斷主流程。
         }
     }
+
+    private static string? NormalizeCarrierForBarcode(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+
+        var chars = raw.Trim().ToUpperInvariant()
+            .Where(ch => char.IsAsciiLetterOrDigit(ch) || ch is '+' or '-' or '.' or '/')
+            .ToArray();
+        if (chars.Length == 0)
+            return null;
+
+        var cleaned = new string(chars);
+        if (cleaned.Length == 7 && cleaned[0] != '/')
+            cleaned = "/" + cleaned;
+        if (cleaned.Length > 8)
+            cleaned = cleaned[..8];
+        return cleaned;
+    }
+
+    /// <summary>
+    /// 先用預覽底圖座標（與 HTML drawCarrierBarcodeOnPreview 相同公式）算出條碼框，
+    /// 再等比對應到實印畫布，避免 100×160 預覽 vs 110×135 實印造成位置／大小跑掉。
+    /// </summary>
+    private static void DrawCarrierBarcode(
+        Graphics g,
+        string? carrier,
+        int printWidthDots,
+        int printHeightDots,
+        int dpi,
+        double printWidthMm,
+        double printHeightMm,
+        double previewWidthMm,
+        double previewHeightMm,
+        double gridHeightMm)
+    {
+        if (string.IsNullOrWhiteSpace(carrier))
+            return;
+
+        var layoutWidthMm = previewWidthMm > 0 ? previewWidthMm : printWidthMm;
+        var layoutHeightMm = previewHeightMm > 0 ? previewHeightMm : printHeightMm;
+        var layoutW = Math.Max(32, (int)Math.Round(layoutWidthMm / 25.4 * dpi, MidpointRounding.AwayFromZero));
+        var layoutH = Math.Max(32, (int)Math.Round(layoutHeightMm / 25.4 * dpi, MidpointRounding.AwayFromZero));
+        var marginDots = Math.Max(2, (int)Math.Round(Math.Min(layoutW, layoutH) * 0.02, MidpointRounding.AwayFromZero));
+        var totalUsableH = Math.Max(16, layoutH - marginDots * 2);
+        var targetGridH = gridHeightMm > 0
+            ? Math.Max(16, (int)Math.Round(gridHeightMm / 25.4 * dpi, MidpointRounding.AwayFromZero))
+            : totalUsableH;
+        var gridH = Math.Min(totalUsableH, targetGridH);
+        var gridTop = marginDots + Math.Max(0, totalUsableH - gridH);
+
+        using var barcodeBmp = RenderCode39Bitmap(carrier.Trim());
+        var nativeW = Math.Max(1, barcodeBmp.Width);
+        var nativeH = Math.Max(1, barcodeBmp.Height);
+
+        var unusedH = Math.Max(0, gridTop - marginDots);
+        var barAreaH = unusedH >= 16 ? unusedH : Math.Max(16, (int)Math.Round(layoutH * 0.16));
+        var barY0 = unusedH >= 16 ? marginDots : Math.Max(marginDots, layoutH - marginDots - barAreaH);
+        var barW = Math.Min(layoutW * 0.86, nativeW * (barAreaH * 0.9 / nativeH));
+        var barH = nativeH * (barW / nativeW);
+        var maxH = barAreaH * 0.92;
+        if (barH > maxH)
+        {
+            barH = maxH;
+            barW = nativeW * (barH / nativeH);
+        }
+
+        var barX = (layoutW - barW) / 2.0;
+        var barY = barY0 + Math.Max(0.0, (barAreaH - barH) / 2.0);
+        var scaleX = printWidthDots / (double)layoutW;
+        var scaleY = printHeightDots / (double)layoutH;
+        var dest = new Rectangle(
+            (int)Math.Round(barX * scaleX, MidpointRounding.AwayFromZero),
+            (int)Math.Round(barY * scaleY, MidpointRounding.AwayFromZero),
+            Math.Max(8, (int)Math.Round(barW * scaleX, MidpointRounding.AwayFromZero)),
+            Math.Max(8, (int)Math.Round(barH * scaleY, MidpointRounding.AwayFromZero)));
+
+        var oldSmooth = g.SmoothingMode;
+        var oldInterp = g.InterpolationMode;
+        var oldPixel = g.PixelOffsetMode;
+        var oldHint = g.TextRenderingHint;
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
+        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+        g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+        g.DrawImage(barcodeBmp, dest);
+        g.SmoothingMode = oldSmooth;
+        g.InterpolationMode = oldInterp;
+        g.PixelOffsetMode = oldPixel;
+        g.TextRenderingHint = oldHint;
+    }
+
+    /// <summary>輸出尺寸對齊 JsBarcode CODE39（width:3, height:72, margin:4, fontSize:18, textMargin:2）。</summary>
+    private static Bitmap RenderCode39Bitmap(string value)
+    {
+        var pattern = EncodeCode39Pattern(value);
+        const int modulePx = 3;
+        const int margin = 4;
+        const int barH = 72;
+        const int fontSize = 18;
+        const int textMargin = 2;
+        var width = Math.Max(16, pattern.Length * modulePx + margin * 2);
+        var height = margin + barH + textMargin + fontSize + margin;
+
+        var bmp = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        using (var g = Graphics.FromImage(bmp))
+        {
+            g.Clear(Color.White);
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
+            g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+
+            using var barBrush = new SolidBrush(Color.Black);
+            var x = margin;
+            foreach (var bit in pattern)
+            {
+                if (bit == '1')
+                    g.FillRectangle(barBrush, x, margin, modulePx, barH);
+                x += modulePx;
+            }
+
+            using var textFormat = new StringFormat
+            {
+                Alignment = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center,
+                FormatFlags = StringFormatFlags.NoWrap | StringFormatFlags.NoClip
+            };
+            using var font = TryMonospaceFont(fontSize)
+                             ?? new Font(SystemFonts.DefaultFont.FontFamily, fontSize, FontStyle.Bold, GraphicsUnit.Pixel);
+            var textRect = new RectangleF(0, margin + barH + textMargin, width, fontSize);
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            g.DrawString(value, font, barBrush, textRect, textFormat);
+        }
+
+        return bmp;
+    }
+
+    private static Font? TryMonospaceFont(float sizePx)
+    {
+        foreach (var family in new[] { "Consolas", "Courier New", "Microsoft JhengHei" })
+        {
+            try
+            {
+                return new Font(family, sizePx, FontStyle.Bold, GraphicsUnit.Pixel);
+            }
+            catch
+            {
+                // 嘗試下一個字型。
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>與 JsBarcode CODE39 相同的模組字串（1=黑、0=白；字元之間插入窄間隔）。</summary>
+    private static string EncodeCode39Pattern(string value)
+    {
+        var payload = (value ?? string.Empty).ToUpperInvariant().Replace("*", "");
+        var chars = ("*" + payload + "*").ToCharArray();
+        var parts = new string[chars.Length];
+        for (var i = 0; i < chars.Length; i++)
+        {
+            if (!Code39Patterns.TryGetValue(chars[i], out var pattern))
+                pattern = Code39Patterns['0'];
+            parts[i] = pattern;
+        }
+
+        return string.Join("0", parts);
+    }
+
+    private static readonly Dictionary<char, string> Code39Patterns = new()
+    {
+        ['0'] = "101001101101",
+        ['1'] = "110100101011",
+        ['2'] = "101100101011",
+        ['3'] = "110110010101",
+        ['4'] = "101001101011",
+        ['5'] = "110100110101",
+        ['6'] = "101100110101",
+        ['7'] = "101001011011",
+        ['8'] = "110100101101",
+        ['9'] = "101100101101",
+        ['A'] = "110101001011",
+        ['B'] = "101101001011",
+        ['C'] = "110110100101",
+        ['D'] = "101011001011",
+        ['E'] = "110101100101",
+        ['F'] = "101101100101",
+        ['G'] = "101010011011",
+        ['H'] = "110101001101",
+        ['I'] = "101101001101",
+        ['J'] = "101011001101",
+        ['K'] = "110101010011",
+        ['L'] = "101101010011",
+        ['M'] = "110110101001",
+        ['N'] = "101011010011",
+        ['O'] = "110101101001",
+        ['P'] = "101101101001",
+        ['Q'] = "101010110011",
+        ['R'] = "110101011001",
+        ['S'] = "101101011001",
+        ['T'] = "101011011001",
+        ['U'] = "110010101011",
+        ['V'] = "100110101011",
+        ['W'] = "110011010101",
+        ['X'] = "100101101011",
+        ['Y'] = "110010110101",
+        ['Z'] = "100110110101",
+        ['-'] = "100101011011",
+        ['.'] = "110010101101",
+        [' '] = "100110101101",
+        ['$'] = "100100100101",
+        ['/'] = "100100101001",
+        ['+'] = "100101001001",
+        ['%'] = "101001001001",
+        ['*'] = "100101101101"
+    };
 }

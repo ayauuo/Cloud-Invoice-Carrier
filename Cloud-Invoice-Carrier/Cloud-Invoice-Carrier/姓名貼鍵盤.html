@@ -3,10 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no" />
-  <title>姓名貼輸入（TSC）</title>
+  <title>姓名貼</title>
   <style>
     :root {
-      color-scheme: dark;
+      --pink: #ff4d9a;
+      --pink-deep: #e91e8c;
+      --pink-soft: #ffe4f2;
+      --ink: #7a2156;
     }
     html, body {
       margin: 0;
@@ -17,115 +20,281 @@
       touch-action: manipulation;
     }
     body {
-      background: #0f0f10;
-      color: #fff;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", "Microsoft JhengHei", Arial;
+      background: #ffd6ea;
+      color: var(--ink);
+      font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, -apple-system, "Segoe UI", Roboto, Arial;
       min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 18px;
       box-sizing: border-box;
     }
     input, textarea {
       -webkit-user-select: text;
       user-select: text;
     }
-    .panel {
-      width: min(980px, 100%);
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 22px;
-      padding: 20px;
-      box-shadow: 0 18px 60px rgba(0,0,0,0.55);
+    .idle-screen,
+    .input-screen,
+    .print-screen {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      background: #000;
     }
-    h1 {
-      margin: 0 0 8px;
-      font-size: 24px;
+    .idle-screen { z-index: 0; cursor: pointer; }
+    .input-screen,
+    .print-screen { z-index: 0; display: none; }
+    .idle-carousel,
+    .idle-carousel__slide,
+    .input-screen__bg,
+    .print-screen__bg {
+      position: absolute;
+      inset: 0;
+    }
+    .idle-carousel__slide,
+    .input-screen__bg,
+    .print-screen__bg {
+      background-repeat: no-repeat;
+      background-size: contain;
+      background-position: center;
+      pointer-events: none;
+    }
+    .idle-carousel__slide {
+      opacity: 0;
+      transition: opacity 0.8s ease-in-out;
+    }
+    .idle-carousel__slide.is-active { opacity: 1; }
+    .input-screen__header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 16vh;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(#ff4d9a 0%, #ff4d9a 78%, rgba(255,77,154,0));
+      pointer-events: none;
+    }
+    .input-screen__title {
+      margin: 0;
+      font-size: clamp(34px, 5.4vw, 58px);
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 3px;
+      -webkit-text-stroke: 5px var(--pink-deep);
+      paint-order: stroke fill;
+      text-shadow: 0 4px 0 rgba(180, 20, 110, 0.35);
+    }
+    .input-screen__subtitle {
+      margin: 6px 0 0;
+      font-size: clamp(16px, 2.2vw, 22px);
+      font-weight: 700;
+      color: #fff;
       letter-spacing: 1px;
+      text-shadow: 0 2px 0 rgba(180, 20, 110, 0.35);
     }
-    .hint {
-      margin: 0 0 14px;
-      opacity: 0.78;
-      font-size: 14px;
-      line-height: 1.5;
+    .input-screen__content {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 17vh 4vw 16vh;
+      box-sizing: border-box;
+      gap: 8px;
+      min-height: 0;
+    }
+    .input-top {
+      display: flex;
+      justify-content: center;
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: 30vh;
+    }
+    #carrierInput {
+      position: absolute;
+      left: -9999px;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
     }
     #nameInput {
-      width: 100%;
-      min-height: 96px;
-      font-size: 28px;
-      padding: 14px 16px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(0,0,0,0.35);
-      color: #fff;
+      position: static;
+      left: auto;
+      flex: 1;
+      min-width: 0;
+      width: auto;
+      height: auto;
+      min-height: 32px;
+      opacity: 1;
+      pointer-events: auto;
+      border: none;
+      background: transparent;
       outline: none;
-      box-sizing: border-box;
-      resize: vertical;
+      color: var(--ink);
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 0;
+      font-family: inherit;
     }
-    .kbd-title {
-      margin: 14px 0 8px;
-      font-size: 15px;
+    #nameInput::placeholder {
       font-weight: 600;
-      letter-spacing: 2px;
-      opacity: 0.9;
+      opacity: 0.45;
+      letter-spacing: 0;
+      color: var(--ink);
     }
+    .ime-composition { display: none; }
+    .preview-box {
+      width: min(92vw, 760px);
+      height: 100%;
+      border: none;
+      background: transparent;
+      padding: 0;
+      box-sizing: border-box;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .preview-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .preview-title {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: var(--pink-deep);
+    }
+    .preview-meta {
+      font-size: 12px;
+      color: rgba(122, 33, 86, 0.7);
+    }
+    .preview-canvas-wrap {
+      background: transparent;
+      border-radius: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 0;
+      flex: 1;
+      overflow: hidden;
+    }
+    #previewCanvas {
+      display: block;
+      background: transparent;
+      box-shadow: none;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: 100%;
+      object-fit: contain;
+    }
+    .field-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .field-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      min-height: 46px;
+      padding: 8px 14px;
+      border-radius: 14px;
+      border: 2px solid rgba(233, 30, 140, 0.22);
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+    .field-row.is-active {
+      border-color: var(--pink-deep);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(255, 77, 154, 0.22);
+    }
+    .field-row__label {
+      flex-shrink: 0;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--pink-deep);
+      letter-spacing: 1px;
+      min-width: 5.5em;
+    }
+    .field-row__value {
+      flex: 1;
+      min-width: 0;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .field-row__value.is-empty {
+      font-weight: 600;
+      opacity: 0.45;
+      letter-spacing: 0;
+    }
+    .kbd-modes.is-hidden { display: none; }
     .kbd-modes {
-      margin: 8px 0 10px;
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
+      flex-shrink: 0;
     }
     .kbd-mode-btn {
-      border: 1px solid rgba(255,255,255,0.14);
-      background: #2a2d33;
-      color: #fff;
+      border: 2px solid rgba(233, 30, 140, 0.28);
+      background: #fff;
+      color: var(--ink);
       border-radius: 999px;
-      padding: 6px 12px;
-      font-size: 13px;
+      padding: 6px 14px;
+      font-size: 15px;
+      font-weight: 700;
       cursor: pointer;
     }
     .kbd-mode-btn.active {
-      background: #c62828;
-      border-color: rgba(255,255,255,0.35);
-      font-weight: 700;
+      background: var(--pink);
+      border-color: var(--pink-deep);
+      color: #fff;
     }
     .ime-box {
-      margin-top: 12px;
       border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.1);
-      background: rgba(255,255,255,0.04);
-      padding: 10px;
+      border: 2px solid rgba(233, 30, 140, 0.22);
+      background: rgba(255, 255, 255, 0.9);
+      padding: 8px;
+      flex-shrink: 0;
     }
     .ime-composition {
-      min-height: 34px;
-      border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.08);
-      background: rgba(0,0,0,0.25);
-      padding: 6px 10px;
-      font-size: 24px;
-      color: #ffd54f;
-      letter-spacing: 3px;
-      display: flex;
-      align-items: center;
-      margin-bottom: 8px;
+      display: none;
     }
     .ime-candidates {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 6px;
+      max-height: 9vh;
+      overflow: auto;
     }
     .ime-controls {
-      margin-top: 8px;
+      margin-top: 6px;
       display: flex;
       align-items: center;
       gap: 8px;
       flex-wrap: wrap;
     }
     .ime-controls button {
-      border: 1px solid rgba(255,255,255,0.15);
-      background: #2a2d33;
-      color: #fff;
+      border: 1px solid rgba(233, 30, 140, 0.28);
+      background: #fff;
+      color: var(--ink);
       border-radius: 8px;
       padding: 4px 10px;
       font-size: 13px;
@@ -137,211 +306,263 @@
     }
     .ime-page-info {
       font-size: 12px;
-      opacity: 0.75;
+      color: rgba(122, 33, 86, 0.7);
     }
     .cand {
-      border: 1px solid rgba(255,255,255,0.1);
-      background: #202225;
-      color: #fff;
+      border: 1px solid rgba(233, 30, 140, 0.22);
+      background: #fff;
+      color: var(--ink);
       border-radius: 10px;
-      padding: 6px 10px;
+      padding: 4px 10px;
       font-size: 20px;
       cursor: pointer;
-      min-width: 46px;
+      min-width: 42px;
       text-align: center;
     }
-    .cand:hover { background: #30343a; }
+    .cand:hover { background: #ffe4f2; }
     .cand-num {
       display: inline-block;
-      opacity: 0.6;
+      opacity: 0.55;
       margin-right: 4px;
       font-size: 12px;
       vertical-align: middle;
     }
     .kb {
       display: grid;
-      gap: 8px;
-      margin-top: 4px;
-      padding: 4px 0 8px;
+      gap: 6px;
+      margin-top: 0;
+      padding: 6px;
+      border-radius: 16px;
+      background: transparent;
+      flex: 0 0 auto;
+      min-height: 0;
+      align-content: start;
     }
     .kb-row {
       display: grid;
       grid-template-columns: repeat(10, minmax(0, 1fr));
-      gap: 8px;
+      gap: 6px;
       justify-items: stretch;
     }
     .key {
-      border: 1px solid rgba(255,255,255,0.1);
-      background: #2e3136;
-      color: #fff;
+      border: 2px solid rgba(233, 30, 140, 0.2);
+      background: #fff;
+      color: var(--ink);
       border-radius: 12px;
       min-width: 0;
-      height: 52px;
+      height: 56px;
       padding: 0;
-      font-size: 24px;
+      font-size: 32px;
       font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
+      font-weight: 700;
       cursor: pointer;
       width: 100%;
     }
-    .key:hover { background: #3a3e45; }
-    .key:active { background: #4b515b; }
+    .key:hover { background: #ffe4f2; }
+    .key:active { background: var(--pink); color: #fff; }
     .key-wide {
       grid-column: span 3;
-      font-size: 16px;
+      font-size: 24px;
       letter-spacing: 2px;
     }
+    .key-show-carrier {
+      grid-column: span 9;
+      font-size: 28px;
+      letter-spacing: 2px;
+      background: var(--pink);
+      color: #fff;
+      border-color: var(--pink-deep);
+    }
     .key-action {
-      font-size: 16px;
+      font-size: 24px;
       letter-spacing: 1px;
-      background: #3b3b3b;
+      background: #ffd0e8;
     }
     .row-shift-1 { padding-left: 4%; padding-right: 4%; }
     .row-shift-2 { padding-left: 8%; padding-right: 8%; }
-    @media (max-width: 640px) {
-      .kb-row { gap: 6px; }
-      .key { height: 48px; font-size: 22px; }
-      .row-shift-1 { padding-left: 2%; padding-right: 2%; }
-      .row-shift-2 { padding-left: 4%; padding-right: 4%; }
-    }
-    .row-actions {
-      margin-top: 14px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: center;
-    }
-    .font-picker {
-      margin-top: 12px;
+    .toolbar {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
+      justify-content: space-between;
       gap: 8px;
-      justify-content: center;
+      flex-shrink: 0;
+    }
+    .font-picker {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
     }
     .font-picker label {
-      font-size: 14px;
-      opacity: 0.9;
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--pink-deep);
     }
     .font-picker select {
-      min-width: 220px;
-      padding: 8px 10px;
-      border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.15);
-      background: #202225;
-      color: #fff;
-      font-size: 14px;
+      min-width: 280px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 2px solid rgba(233, 30, 140, 0.28);
+      background: #fff;
+      color: var(--ink);
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .font-picker select option {
+      font-size: 24px;
+    }
+    .row-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
     }
     .row-actions button {
-      min-width: 120px;
-      padding: 12px 16px;
+      min-width: 96px;
+      padding: 10px 14px;
       border-radius: 999px;
       border: none;
       font-size: 16px;
+      font-weight: 800;
       letter-spacing: 2px;
       cursor: pointer;
     }
-    #btnBksp { background: #3b3b3b; color: #fff; }
-    #btnClear { background: #6b4b00; color: #fff; font-weight: 700; }
-    #btnPrint { background: #c62828; color: #fff; font-weight: 800; }
-    .preview-box {
-      margin-top: 14px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.1);
-      background: rgba(255,255,255,0.04);
-      padding: 12px;
-    }
-    .preview-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .preview-title {
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: 2px;
-    }
-    .preview-meta {
-      font-size: 12px;
-      opacity: 0.75;
-    }
-    .preview-canvas-wrap {
-      background: repeating-conic-gradient(#1c1c1f 0% 25%, #232327 0% 50%) 50% / 14px 14px;
-      border-radius: 10px;
-      padding: 10px;
+    #btnBksp { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 2px rgba(233, 30, 140, 0.28); }
+    #btnClear { background: #ffb347; color: #fff; }
+    .input-screen__footer {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 1.5vh;
+      z-index: 2;
       display: flex;
       justify-content: center;
-      align-items: center;
-      min-height: 180px;
+      pointer-events: none;
     }
-    #previewCanvas {
-      background: #ffffff;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-      max-width: 100%;
+    .buttons-row {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      pointer-events: auto;
+    }
+    .buttons-row button {
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      line-height: 0;
+    }
+    .buttons-row button img {
+      display: block;
+      width: auto;
       height: auto;
+      max-width: min(38vw, 240px);
+      pointer-events: none;
+    }
+    @media (max-width: 640px) {
+      .kb-row { gap: 5px; }
+      .key { height: 50px; font-size: 28px; }
+      .row-shift-1 { padding-left: 2%; padding-right: 2%; }
+      .row-shift-2 { padding-left: 4%; padding-right: 4%; }
+      .input-top { max-height: 32vh; }
+      .preview-box { width: 100%; }
     }
   </style>
 </head>
 <body>
-  <div class="panel">
-    <h1>兌換券列印</h1>
-    <p class="hint">
-      下方為<strong>手機風格注音鍵盤</strong>：先打注音，再點候選中文字輸入。
-      多行文字時，每一列會印一行；單行文字則會重複印在全部格位。列印透過主程式送 TSPL 到 <strong>TSC TTP-345</strong>。
-    </p>
-
-    <textarea id="nameInput" lang="zh-TW" inputmode="text" placeholder="請輸入要列印的文字（可多行）"></textarea>
-
-    <div class="preview-box" aria-label="列印版面預覽">
-      <div class="preview-head">
-        <div class="preview-title">列印預覽（同字型 / 同欄列分布）</div>
-        <div class="preview-meta" id="previewMeta">等待版面設定…</div>
-      </div>
-      <div class="preview-canvas-wrap">
-        <canvas id="previewCanvas" width="320" height="200"></canvas>
-      </div>
-    </div>
-
-    <div class="ime-box" aria-label="注音輸入法區">
-      <div class="ime-composition" id="composition">（請輸入注音）</div>
-      <div class="ime-candidates" id="candidates"></div>
-      <div class="ime-controls" id="imeControls" style="display:none;">
-        <button type="button" id="btnExpandCandidates">展開</button>
-        <button type="button" id="btnPrevCandidates">上一頁</button>
-        <button type="button" id="btnNextCandidates">下一頁</button>
-        <span class="ime-page-info" id="candidatesPageInfo"></span>
-      </div>
-    </div>
-
-    <div class="kbd-title" id="kbdLabel">注音鍵盤（含候選字）</div>
-    <div class="kbd-modes" role="group" aria-label="鍵盤模式切換">
-      <button type="button" class="kbd-mode-btn active" data-mode="zhuyin">注音</button>
-      <button type="button" class="kbd-mode-btn" data-mode="english">英文</button>
-      <button type="button" class="kbd-mode-btn" data-mode="number">數字</button>
-    </div>
-    <div class="kb" id="keyboard" role="group" aria-labelledby="kbdLabel"></div>
-
-    <div class="font-picker">
-      <label for="fontSelect">列印字型</label>
-      <select id="fontSelect" aria-label="列印字型選擇">
-        <option value="Microsoft JhengHei">微軟正黑體（Microsoft JhengHei）</option>
-        <option value="MingLiU">新細明體（MingLiU）</option>
-        <option value="PMingLiU">細明體（PMingLiU）</option>
-        <option value="DFKai-SB">標楷體（DFKai-SB）</option>
-        <option value="KaiTi">楷體（KaiTi）</option>
-        <option value="SimSun">宋體（SimSun）</option>
-      </select>
-    </div>
-
-    <div class="row-actions">
-      <button type="button" id="btnBksp">退格</button>
-      <button type="button" id="btnClear">清除</button>
-      <button type="button" id="btnPrint">列印到 TSC</button>
+  <div id="step0" class="idle-screen" aria-label="待機畫面">
+    <div class="idle-carousel" id="idleCarousel">
+      <div class="idle-carousel__slide is-active" style="background-image:url('picture/AdPage/1.png')"></div>
+      <div class="idle-carousel__slide" style="background-image:url('picture/AdPage/2.png')"></div>
     </div>
   </div>
 
+  <div id="step1" class="input-screen" style="display:none;" aria-label="輸入姓名">
+    <div class="input-screen__bg" style="background-image:url('picture/InputPage/1.png')"></div>
+    <div class="input-screen__header">
+      <h1 class="input-screen__title">請輸入姓名</h1>
+      <p class="input-screen__subtitle">點選下方欄位，輸入姓名或載具</p>
+    </div>
+    <div class="input-screen__content">
+      <div class="input-top">
+        <input id="carrierInput" type="text" inputmode="text" maxlength="8" autocomplete="off" spellcheck="false" tabindex="-1" />
+        <div class="preview-box" aria-label="列印版面預覽">
+          <div class="preview-head">
+            <div class="preview-title">預覽</div>
+            <div class="preview-meta" id="previewMeta">等待版面設定…</div>
+          </div>
+          <div class="preview-canvas-wrap">
+            <canvas id="previewCanvas" width="320" height="200"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-rows" role="tablist" aria-label="輸入項目">
+        <button type="button" class="field-row" id="carrierFieldRow" data-field="carrier">
+          <span class="field-row__label">輸入載具</span>
+          <span class="field-row__value is-empty" id="carrierFieldValue">點這裡輸入載具</span>
+        </button>
+        <div class="field-row is-active" id="nameFieldRow" data-field="name">
+          <span class="field-row__label">輸入姓名</span>
+          <input id="nameInput" lang="zh-TW" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="點這裡輸入姓名" />
+        </div>
+      </div>
+
+      <div class="ime-box" aria-label="注音輸入法區">
+        <div class="ime-composition" id="composition">（請輸入注音）</div>
+        <div class="ime-candidates" id="candidates"></div>
+        <div class="ime-controls" id="imeControls" style="display:none;">
+          <button type="button" id="btnExpandCandidates">展開</button>
+          <button type="button" id="btnPrevCandidates">上一頁</button>
+          <button type="button" id="btnNextCandidates">下一頁</button>
+          <span class="ime-page-info" id="candidatesPageInfo"></span>
+        </div>
+      </div>
+
+      <div class="kbd-title" id="kbdLabel">注音鍵盤（含候選字）</div>
+      <div class="kbd-modes" role="group" aria-label="鍵盤模式切換">
+        <button type="button" class="kbd-mode-btn active" data-mode="zhuyin">注音</button>
+        <button type="button" class="kbd-mode-btn" data-mode="english">英文</button>
+        <button type="button" class="kbd-mode-btn" data-mode="number">數字</button>
+      </div>
+      <div class="kb" id="keyboard" role="group" aria-labelledby="kbdLabel"></div>
+
+      <div class="toolbar">
+        <div class="font-picker">
+          <label for="fontSelect">列印字型</label>
+          <select id="fontSelect" aria-label="列印字型選擇">
+            <option value="Microsoft JhengHei">微軟正黑體（Microsoft JhengHei）</option>
+            <option value="MingLiU">新細明體（MingLiU）</option>
+            <option value="PMingLiU">細明體（PMingLiU）</option>
+            <option value="DFKai-SB">標楷體（DFKai-SB）</option>
+            <option value="KaiTi">楷體（KaiTi）</option>
+            <option value="SimSun">宋體（SimSun）</option>
+          </select>
+        </div>
+        <div class="row-actions">
+          <button type="button" id="btnBksp">退格</button>
+          <button type="button" id="btnClear">清除</button>
+        </div>
+      </div>
+    </div>
+    <div class="input-screen__footer">
+      <div class="buttons-row">
+        <button type="button" id="btnBack" aria-label="回上一頁">
+          <img src="picture/ChoosePage/BackButton.png" alt="" />
+        </button>
+        <button type="button" id="btnPrint" aria-label="確認列印">
+          <img src="picture/ChoosePage/PrintButton.png" alt="" />
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="stepPrint" class="print-screen" style="display:none;" aria-label="列印中">
+    <div class="print-screen__bg" style="background-image:url('picture/PrintPage/1.png')"></div>
+  </div>
+
+  <script src="lib/jsbarcode/JsBarcode.all.min.js"></script>
   <script src="jszhuyin/bopomofo_encoder.js"></script>
   <script src="jszhuyin/jszhuyin_data_pack.js"></script>
   <script src="jszhuyin/storage.js"></script>
@@ -352,6 +573,11 @@
   <script>
     (function () {
       var ta = document.getElementById("nameInput");
+      var carrierInput = document.getElementById("carrierInput");
+      var carrierFieldValueEl = document.getElementById("carrierFieldValue");
+      var nameFieldRow = document.getElementById("nameFieldRow");
+      var carrierFieldRow = document.getElementById("carrierFieldRow");
+      var kbdModesEl = document.querySelector(".kbd-modes");
       var kb = document.getElementById("keyboard");
       var compositionEl = document.getElementById("composition");
       var candidatesEl = document.getElementById("candidates");
@@ -375,10 +601,28 @@
       var expandedPage = 0;
       var COLLAPSED_LIMIT = 10;
       var EXPANDED_PAGE_SIZE = 50;
-      var DEFAULT_LABEL_TEXT = "吊飾兌換券\n進擊的巨人《載具吊飾卡》\n台北漫博7/23-7/27展期間\n憑此張兌換券向木棉花機台區\n工作人員領取吊飾及保護套\n此券請交由工作人員回收";
+      var DEFAULT_LABEL_TEXT = "";
       var defaultTextApplied = false;
+      var currentStep = "idle";
+      var idleCarouselIndex = 0;
+      var idleCarouselTimer = null;
+      var IDLE_CAROUSEL_INTERVAL_MS = 5000;
+      var printPageReturnTimer = null;
+      var PRINT_PAGE_DURATION_MS = 40000;
+      var idleSpaceTapCount = 0;
+      var idleSpaceLastAt = 0;
+      var IDLE_SPACE_RESET_MS = 600;
 
       var keyboardMode = "zhuyin";
+      var nameKeyboardMode = "zhuyin";
+      var inputTarget = "name";
+      var PREVIEW_IMAGE_SRC = "picture/preview/1.jpg";
+      var previewBgImage = null;
+      var previewBgLoading = false;
+      var shownCarrier = "";
+      var committedName = "";
+      var committedCaret = 0;
+      var CARRIER_MAX_LEN = 8;
       var rowsByMode = {
         zhuyin: [
           ["ㄅ", "ㄉ", "ˇ", "ˋ", "ㄓ", "ˊ", "˙", "ㄚ", "ㄞ", "ㄢ"],
@@ -398,17 +642,110 @@
           ["-", "/", ":", ";", "(", ")", "$", "&", "@", "\""],
           [".", ",", "?", "!", "'", "+", "=", "#", "%", "*"],
           [{ label: "空白", ch: " ", cls: "key-wide" }]
+        ],
+        carrier: [
+          ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+          ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+          ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+          ["/", "+", "-", ".", "Z", "X", "C", "V", "B", "N"],
+          ["M", { label: "顯示載具", ch: "{show}", cls: "key-show-carrier" }]
         ]
       };
 
       function applyDefaultLabelText(text) {
         var next = String(text || "").trim();
-        if (!next) return;
+        if (!next || next.indexOf("\n") >= 0 || next.length > 16) return;
         if (!String(ta.value || "").trim() && !defaultTextApplied) {
           ta.value = next;
+          committedName = next;
+          committedCaret = Array.from(next).length;
           defaultTextApplied = true;
+          updateFieldDisplays();
           renderPreview();
         }
+      }
+
+      function syncIdleCarouselSlide() {
+        var slides = document.querySelectorAll("#step0 .idle-carousel__slide");
+        slides.forEach(function(slide, i) {
+          slide.classList.toggle("is-active", i === idleCarouselIndex);
+        });
+      }
+
+      function startIdleCarousel() {
+        stopIdleCarousel();
+        var slides = document.querySelectorAll("#step0 .idle-carousel__slide");
+        if (!slides.length) return;
+        idleCarouselIndex = 0;
+        syncIdleCarouselSlide();
+        if (slides.length <= 1) return;
+        idleCarouselTimer = setInterval(function() {
+          idleCarouselIndex = (idleCarouselIndex + 1) % slides.length;
+          syncIdleCarouselSlide();
+        }, IDLE_CAROUSEL_INTERVAL_MS);
+      }
+
+      function stopIdleCarousel() {
+        if (idleCarouselTimer != null) {
+          clearInterval(idleCarouselTimer);
+          idleCarouselTimer = null;
+        }
+      }
+
+      function clearPrintPageReturnTimer() {
+        if (printPageReturnTimer) {
+          clearTimeout(printPageReturnTimer);
+          printPageReturnTimer = null;
+        }
+      }
+
+      function showStep(step) {
+        currentStep = step;
+        if (step !== "idle") {
+          idleSpaceTapCount = 0;
+          idleSpaceLastAt = 0;
+          stopIdleCarousel();
+        }
+        document.getElementById("step0").style.display = step === "idle" ? "block" : "none";
+        document.getElementById("step1").style.display = step === "input" ? "block" : "none";
+        document.getElementById("stepPrint").style.display = step === "print" ? "block" : "none";
+        if (step === "idle") startIdleCarousel();
+        if (step === "input") {
+          setTimeout(function() { ta.focus(); }, 50);
+          renderPreview();
+        }
+      }
+
+      function goToNameInput() {
+        showStep("input");
+      }
+
+      function resetSessionToIdle() {
+        clearPrintPageReturnTimer();
+        composition = "";
+        candidates = [];
+        resetCandidatePager();
+        updateCompositionView();
+        renderCandidates();
+        ta.value = "";
+        committedName = "";
+        committedCaret = 0;
+        carrierInput.value = "";
+        shownCarrier = "";
+        defaultTextApplied = false;
+        setInputTarget("name");
+        updateFieldDisplays();
+        renderPreview();
+        showStep("idle");
+      }
+
+      function enterPrintPage() {
+        clearPrintPageReturnTimer();
+        showStep("print");
+        printPageReturnTimer = setTimeout(function() {
+          printPageReturnTimer = null;
+          resetSessionToIdle();
+        }, PRINT_PAGE_DURATION_MS);
       }
 
       function splitLabelLines(text) {
@@ -423,7 +760,14 @@
         if (multiLinePerRow) {
           return row < lines.length ? lines[row] : "";
         }
-        return String(ta.value || "").trim() + (composition || "");
+        return getDisplayName();
+      }
+
+      function getDisplayName() {
+        var arr = Array.from(committedName);
+        var caret = Math.max(0, Math.min(committedCaret, arr.length));
+        var composing = (inputTarget === "name" && composition) ? composition : "";
+        return arr.slice(0, caret).join("") + composing + arr.slice(caret).join("");
       }
 
       function updateModeUi() {
@@ -431,9 +775,14 @@
           var isActive = btn.getAttribute("data-mode") === keyboardMode;
           btn.classList.toggle("active", isActive);
         });
-        if (keyboardMode === "zhuyin") {
+        var isCarrier = inputTarget === "carrier";
+        if (kbdModesEl) kbdModesEl.classList.toggle("is-hidden", isCarrier);
+        if (isCarrier) {
+          kbdLabel.textContent = "載具鍵盤";
+          imeBoxEl.style.display = "none";
+        } else if (keyboardMode === "zhuyin") {
           kbdLabel.textContent = "注音鍵盤（含候選字）";
-          imeBoxEl.style.display = "";
+          imeBoxEl.style.display = composition ? "" : "none";
         } else if (keyboardMode === "english") {
           kbdLabel.textContent = "英文鍵盤";
           imeBoxEl.style.display = "none";
@@ -441,27 +790,139 @@
           kbdLabel.textContent = "數字與符號鍵盤";
           imeBoxEl.style.display = "none";
         }
+        nameFieldRow.classList.toggle("is-active", inputTarget === "name");
+        carrierFieldRow.classList.toggle("is-active", inputTarget === "carrier");
+      }
+
+      function paintNameInput() {
+        var arr = Array.from(committedName);
+        var caret = Math.max(0, Math.min(committedCaret, arr.length));
+        var before = arr.slice(0, caret).join("");
+        var after = arr.slice(caret).join("");
+        var composing = (inputTarget === "name" && composition) ? composition : "";
+        var display = before + composing + after;
+        ta.value = display;
+        var pos = before.length + composing.length;
+        try {
+          ta.setSelectionRange(pos, pos);
+        } catch (err) {}
+      }
+
+      function syncCaretFromInput() {
+        if (composition) return;
+        committedName = String(ta.value || "");
+        committedCaret = Array.from(committedName.slice(0, ta.selectionStart || 0)).length;
+      }
+
+      function updateFieldDisplays() {
+        paintNameInput();
+        var carrierText = String(carrierInput.value || "").trim();
+        if (carrierText) {
+          carrierFieldValueEl.textContent = carrierText;
+          carrierFieldValueEl.classList.remove("is-empty");
+        } else {
+          carrierFieldValueEl.textContent = "點這裡輸入載具";
+          carrierFieldValueEl.classList.add("is-empty");
+        }
+      }
+
+      function setInputTarget(next) {
+        if (next === inputTarget && ((next === "carrier" && keyboardMode === "carrier") || (next === "name" && keyboardMode !== "carrier"))) {
+          return;
+        }
+        if (inputTarget === "name" && composition) {
+          commitFirstCandidateOrComposition();
+        }
+        inputTarget = next === "carrier" ? "carrier" : "name";
+        if (inputTarget === "carrier") {
+          if (keyboardMode !== "carrier") nameKeyboardMode = keyboardMode;
+          keyboardMode = "carrier";
+        } else {
+          keyboardMode = nameKeyboardMode || "zhuyin";
+        }
+        updateModeUi();
+        renderKeyboard();
+        updateFieldDisplays();
+        if (inputTarget === "name") ta.focus();
+      }
+
+      function normalizeCarrier(value) {
+        var cleaned = String(value || "")
+          .toUpperCase()
+          .replace(/[^A-Z0-9+\-\./]/g, "");
+        if (cleaned.length === 7 && cleaned[0] !== "/") cleaned = "/" + cleaned;
+        return cleaned.slice(0, CARRIER_MAX_LEN);
+      }
+
+      function isValidCarrier(v) {
+        return /^\/[A-Z0-9+\-\.]{7}$/.test(v);
+      }
+
+      function syncShownCarrierFromInput() {
+        var v = normalizeCarrier(carrierInput.value);
+        shownCarrier = isValidCarrier(v) ? v : "";
+      }
+
+      function appendCarrier(ch) {
+        carrierInput.value = normalizeCarrier((carrierInput.value || "") + ch);
+        syncShownCarrierFromInput();
+        updateFieldDisplays();
+        renderPreview();
+      }
+
+      function backspaceCarrier() {
+        var v = String(carrierInput.value || "");
+        if (!v) return;
+        carrierInput.value = normalizeCarrier(v.slice(0, -1));
+        syncShownCarrierFromInput();
+        updateFieldDisplays();
+        renderPreview();
+      }
+
+      function clearCarrier() {
+        carrierInput.value = "";
+        shownCarrier = "";
+        updateFieldDisplays();
+        renderPreview();
+      }
+
+      function showCarrierOnPreview() {
+        var v = normalizeCarrier(carrierInput.value);
+        carrierInput.value = v;
+        updateFieldDisplays();
+        if (!isValidCarrier(v)) {
+          alert("請輸入正確載具（/ 加上 7 碼，例如 /ABC1234）。");
+          shownCarrier = "";
+          renderPreview();
+          return;
+        }
+        shownCarrier = v;
+        renderPreview();
       }
 
 
       function insertAtCaret(text) {
-        ta.focus();
-        var start = ta.selectionStart;
-        var end = ta.selectionEnd;
-        var v = ta.value;
-        ta.value = v.slice(0, start) + text + v.slice(end);
-        var pos = start + text.length;
-        ta.selectionStart = ta.selectionEnd = pos;
+        if (!text) return;
+        var arr = Array.from(committedName);
+        var caret = Math.max(0, Math.min(committedCaret, arr.length));
+        var insert = Array.from(text);
+        committedName = arr.slice(0, caret).concat(insert).concat(arr.slice(caret)).join("");
+        committedCaret = caret + insert.length;
+        paintNameInput();
+        if (inputTarget === "name") ta.focus();
       }
 
       function updateCompositionView() {
-        compositionEl.textContent = composition || "（請輸入注音）";
+        if (compositionEl) compositionEl.textContent = composition || "";
+        updateFieldDisplays();
+        updateModeUi();
         renderPreview();
       }
 
       function commitText(text) {
         if (!text) return;
         insertAtCaret(text);
+        updateFieldDisplays();
         renderPreview();
       }
 
@@ -617,65 +1078,167 @@
         });
       }
 
+      function loadPreviewBackground(callback) {
+        if (previewBgImage && previewBgImage.complete && previewBgImage.naturalWidth) {
+          callback(previewBgImage);
+          return;
+        }
+        var img = new Image();
+        img.onload = function () {
+          previewBgImage = img;
+          previewBgLoading = false;
+          callback(img);
+        };
+        img.onerror = function () {
+          previewBgLoading = false;
+          callback(null);
+        };
+        previewBgLoading = true;
+        img.src = PREVIEW_IMAGE_SRC;
+      }
+
       function renderPreview() {
+        loadPreviewBackground(function (bg) {
+          drawPreview(bg);
+        });
+      }
+
+      function roundAwayFromZero(n) {
+        if (!isFinite(n)) return 0;
+        return n >= 0 ? Math.round(n) : -Math.round(-n);
+      }
+
+      function getColumnOffsetDots(col, colOffsetsDots, firstColOffsetDots) {
+        if (colOffsetsDots && col >= 0 && col < colOffsetsDots.length) {
+          return parseInt(colOffsetsDots[col], 10) || 0;
+        }
+        if (col === 0) return firstColOffsetDots;
+        return 0;
+      }
+
+      function applyPreviewFont(ctx, fontPx, fontFamily) {
+        ctx.font = "bold " + fontPx + "px '" + fontFamily + "', 'Microsoft JhengHei', 'Noto Sans TC', sans-serif";
+      }
+
+      // 近似 GDI+ MeasureString 預設左右留白（約 1/6 em），讓字距與縮字與印表機一致。
+      function measureGdiCharWidth(ctx, ch, fontPx) {
+        return ctx.measureText(ch).width + fontPx / 3;
+      }
+
+      function measureGdiLineHeight(ctx, fontPx) {
+        var m = ctx.measureText("Hg");
+        var box = (m.fontBoundingBoxAscent || 0) + (m.fontBoundingBoxDescent || 0);
+        return box > 0 ? box : fontPx * 1.2;
+      }
+
+      function measureTrackedWidthDots(ctx, text, fontPx, trackingPx) {
+        if (!text) return 0;
+        if (Math.abs(trackingPx) < 0.01) {
+          var w = 0;
+          for (var i = 0; i < text.length; i++) w += measureGdiCharWidth(ctx, text[i], fontPx);
+          return w;
+        }
+        var width = 0;
+        for (var j = 0; j < text.length; j++) {
+          width += measureGdiCharWidth(ctx, text[j], fontPx);
+          if (j < text.length - 1) width += trackingPx;
+        }
+        return width;
+      }
+
+      function drawTrackedString(ctx, raw, fontPx, trackingPx, layoutX, layoutY, layoutW, layoutH) {
+        if (!raw) return;
+        var textWidth = measureTrackedWidthDots(ctx, raw, fontPx, trackingPx);
+        var textHeight = measureGdiLineHeight(ctx, fontPx);
+        var startX = layoutX + (layoutW - textWidth) / 2;
+        var y = layoutY + (layoutH - textHeight) / 2;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        if (Math.abs(trackingPx) < 0.01) {
+          ctx.fillText(raw, startX, y);
+          return;
+        }
+        var x = startX;
+        for (var i = 0; i < raw.length; i++) {
+          var ch = raw[i];
+          var slotW = measureGdiCharWidth(ctx, ch, fontPx);
+          var glyphW = ctx.measureText(ch).width;
+          ctx.fillText(ch, x + (slotW - glyphW) / 2, y);
+          x += slotW + trackingPx;
+        }
+      }
+
+      function drawPreview(bg) {
         var ctx = previewCanvas.getContext("2d");
         var cfg = labelLayout || {
-          widthMm: 50, heightMm: 30, columns: 1, rows: 1,
-          columnGapMm: 0, rowGapMm: 0, gridHeightMm: 0,
-          layoutScale: 1.0, charSpacingPx: 0, dpi: 300,
-          firstColumnOffsetXPx: 0, columnOffsetsXPx: [], rotate180: false
+          widthMm: 110, heightMm: 135, previewWidthMm: 100, previewHeightMm: 160,
+          columns: 3, rows: 6,
+          columnGapMm: 0.4, rowGapMm: 1, gridHeightMm: 90,
+          layoutScale: 0.4, charSpacingPx: -30, dpi: 300,
+          firstColumnOffsetXPx: 30, columnOffsetsXPx: [50, 20, -10], rotate180: true
         };
 
-        var widthMm  = Math.max(5, +cfg.widthMm  || 50);
-        var heightMm = Math.max(5, +cfg.heightMm || 30);
+        var printWidthMm  = Math.max(5, +cfg.widthMm  || 50);
+        var printHeightMm = Math.max(5, +cfg.heightMm || 30);
+        var widthMm  = Math.max(5, +cfg.previewWidthMm  || 100);
+        var heightMm = Math.max(5, +cfg.previewHeightMm || 160);
         var cols     = Math.max(1, parseInt(cfg.columns, 10) || 1);
         var rows     = Math.max(1, parseInt(cfg.rows, 10) || 1);
         var colGapMm = Math.max(0, +cfg.columnGapMm || 0);
         var rowGapMm = Math.max(0, +cfg.rowGapMm || 0);
         var gridHMm  = +cfg.gridHeightMm || 0;
-        var scale    = Math.max(0.001, +cfg.layoutScale || 1);
+        var scale    = Math.max(0.001, Math.min(2, +cfg.layoutScale || 1));
         var charSpaceDots = parseInt(cfg.charSpacingPx, 10) || 0;
         var dpi      = Math.max(72, parseInt(cfg.dpi, 10) || 300);
-        var rotate180 = !!cfg.rotate180;
         var firstColOffsetDots = parseInt(cfg.firstColumnOffsetXPx, 10) || 0;
         var colOffsetsDots = Array.isArray(cfg.columnOffsetsXPx) ? cfg.columnOffsetsXPx : [];
 
-        var maxPreviewW = 460;
-        var maxPreviewH = 320;
-        var pxPerMm = Math.min(maxPreviewW / widthMm, maxPreviewH / heightMm);
-        var canvasW = Math.round(widthMm * pxPerMm);
-        var canvasH = Math.round(heightMm * pxPerMm);
+        // 預覽畫布依底圖 10×16 cm；文字用同一套格線公式，座標空間為預覽尺寸。
+        var wDots = Math.max(32, roundAwayFromZero(widthMm / 25.4 * dpi));
+        var hDots = Math.max(32, roundAwayFromZero(heightMm / 25.4 * dpi));
+        var scaledColumnGapMm = colGapMm * scale;
+        var scaledRowGapMm = rowGapMm * scale;
+        var colGapDots = Math.max(0, roundAwayFromZero(scaledColumnGapMm / 25.4 * dpi));
+        var rowGapDots = Math.max(0, roundAwayFromZero(scaledRowGapMm / 25.4 * dpi));
+        var marginDots = Math.max(2, roundAwayFromZero(Math.min(wDots, hDots) * 0.02));
+        var totalUsableH = Math.max(16, hDots - marginDots * 2);
+        var targetGridH = gridHMm > 0
+          ? Math.max(16, roundAwayFromZero(gridHMm / 25.4 * dpi))
+          : totalUsableH;
+        var gridH = Math.min(totalUsableH, targetGridH);
+        var gridTop = marginDots + Math.max(0, totalUsableH - gridH);
+        var availableWidth = Math.max(8, wDots - marginDots * 2 - colGapDots * (cols - 1));
+        var availableHeight = Math.max(8, gridH - rowGapDots * (rows - 1));
+        var cellWidth = Math.max(4, availableWidth / cols);
+        var cellHeight = Math.max(4, availableHeight / rows);
+        var padX = Math.max(2, cellWidth * 0.1 * scale);
+        var padY = Math.max(2, cellHeight * 0.12 * scale);
+        var innerWidth = Math.max(2, cellWidth - padX * 2);
+        var innerHeight = Math.max(2, cellHeight - padY * 2);
+        var extraLayoutX = 40;
+        var extraLayoutY = -10;
+        var trackingPx = charSpaceDots;
+
+        var maxPreviewW = 760;
+        var maxPreviewH = 900;
+        var viewScale = Math.min(maxPreviewW / wDots, maxPreviewH / hDots);
+        var canvasW = Math.max(1, Math.round(wDots * viewScale));
+        var canvasH = Math.max(1, Math.round(hDots * viewScale));
         previewCanvas.width  = canvasW;
         previewCanvas.height = canvasH;
 
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, canvasW, canvasH);
-
-        var marginMm = Math.min(widthMm, heightMm) * 0.02;
-        var totalUsableHmm = Math.max(2, heightMm - marginMm * 2);
-        var targetGridHmm = gridHMm > 0 ? Math.min(totalUsableHmm, gridHMm) : totalUsableHmm;
-        var gridTopMm = marginMm + Math.max(0, totalUsableHmm - targetGridHmm);
-        var usableWmm = Math.max(2, widthMm - marginMm * 2 - colGapMm * (cols - 1));
-        var usableHmm = Math.max(2, targetGridHmm - rowGapMm * (rows - 1));
-        var cellWmm = usableWmm / cols;
-        var cellHmm = usableHmm / rows;
+        ctx.setTransform(viewScale, 0, 0, viewScale, 0, 0);
+        if (bg && bg.naturalWidth) {
+          ctx.drawImage(bg, 0, 0, wDots, hDots);
+        } else {
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, wDots, hDots);
+        }
 
         ctx.save();
+        drawCarrierBarcodeOnPreview(ctx, wDots, hDots, marginDots, gridTop);
 
-        ctx.strokeStyle = "rgba(0,0,0,0.18)";
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 3]);
-        for (var r = 0; r < rows; r++) {
-          for (var c = 0; c < cols; c++) {
-            var cellXmm = marginMm + c * (cellWmm + colGapMm);
-            var cellYmm = gridTopMm + r * (cellHmm + rowGapMm);
-            ctx.strokeRect(cellXmm * pxPerMm, cellYmm * pxPerMm, cellWmm * pxPerMm, cellHmm * pxPerMm);
-          }
-        }
-        ctx.setLineDash([]);
-
-        var rawText = String(ta.value || "").trim();
-        if (composition) rawText += composition;
+        var rawText = String(getDisplayName() || "").trim();
         var textLines = splitLabelLines(rawText);
         var multiLinePerRow = textLines.length > 1;
         var fitSample = multiLinePerRow
@@ -683,85 +1246,92 @@
           : rawText;
         if (!rawText) {
           ctx.restore();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
           previewMetaEl.textContent =
-            widthMm + "×" + heightMm + " mm  /  " + cols + "×" + rows +
-            "  /  scale " + scale + "  /  spacing " + charSpaceDots + "px";
+            "預覽 " + widthMm + "×" + heightMm + " mm（10×16 cm）  /  列印 " + printWidthMm + "×" + printHeightMm +
+            " mm  /  " + cols + "×" + rows +
+            "  /  scale " + scale + "  /  spacing " + charSpaceDots + "px" +
+            (shownCarrier ? "  /  載具 " + shownCarrier : "");
           return;
         }
 
         var fontFamily = fontSelectEl.value || "Microsoft JhengHei";
-        var dotsToMm = 25.4 / dpi;
-        var charSpaceMm = charSpaceDots * dotsToMm;
-        var firstColOffsetMm = firstColOffsetDots * dotsToMm;
-
-        var padXmm = Math.max(0.2, cellWmm * 0.1 * scale);
-        var padYmm = Math.max(0.2, cellHmm * 0.12 * scale);
-        var innerWmm = Math.max(0.5, cellWmm - padXmm * 2);
-        var innerHmm = Math.max(0.5, cellHmm - padYmm * 2);
-
-        function measureTrackedWidthPx(text, fontPx, trackingPx) {
-          if (!text) return 0;
-          var w = 0;
-          for (var i = 0; i < text.length; i++) {
-            w += ctx.measureText(text[i]).width;
-            if (i < text.length - 1) w += trackingPx;
-          }
-          return w;
-        }
-
-        var innerWpx = innerWmm * pxPerMm;
-        var innerHpx = innerHmm * pxPerMm;
-        // 熱感應實印時，負字距通常不會像理論值那麼「硬擠」；預覽端稍微減弱負值效果，讓畫面更接近實際觀感。
-        var trackingScale = charSpaceDots < 0 ? 0.45 : 1.0;
-        var trackingPxPreview = charSpaceMm * pxPerMm * trackingScale;
-
-        var lowFont = Math.max(6, 10 * scale);
-        var highFont = Math.max(lowFont, Math.min(innerWpx * 0.42 * scale + lowFont, innerHpx * 0.9));
+        var lowFont = Math.max(8, 10 * scale);
+        var widthDrivenHigh = innerWidth * (0.42 * scale);
+        var heightSafetyHigh = innerHeight * 0.9;
+        var highFont = Math.max(lowFont, Math.min(widthDrivenHigh, heightSafetyHigh));
         var bestFont = lowFont;
-        for (var iter = 0; iter < 28 && (highFont - lowFont) > 0.5; iter++) {
-          var mid = (highFont + lowFont) / 2;
-          ctx.font = "bold " + mid + "px '" + fontFamily + "', 'Microsoft JhengHei', 'Noto Sans TC', sans-serif";
-          var tw = measureTrackedWidthPx(fitSample, mid, trackingPxPreview);
-          if (tw <= innerWpx * 0.95) { bestFont = mid; lowFont = mid; }
+        for (var iter = 0; iter < 36 && (highFont - lowFont) > 0.35; iter++) {
+          var mid = (highFont + lowFont) * 0.5;
+          applyPreviewFont(ctx, mid, fontFamily);
+          var tw = measureTrackedWidthDots(ctx, fitSample, mid, trackingPx);
+          if (tw <= innerWidth * 0.95) { bestFont = mid; lowFont = mid; }
           else { highFont = mid - 0.5; }
         }
 
         ctx.fillStyle = "#000";
-        ctx.textBaseline = "middle";
-        ctx.font = "bold " + bestFont + "px '" + fontFamily + "', 'Microsoft JhengHei', 'Noto Sans TC', sans-serif";
+        applyPreviewFont(ctx, bestFont, fontFamily);
 
         for (var rr = 0; rr < rows; rr++) {
           for (var cc = 0; cc < cols; cc++) {
             var cellText = getCellLabelText(textLines, multiLinePerRow, rr, cc);
             if (!cellText) continue;
-            var cellXmm2 = marginMm + cc * (cellWmm + colGapMm);
-            var cellYmm2 = gridTopMm + rr * (cellHmm + rowGapMm);
-            var offsetMm = 0;
-            if (colOffsetsDots && cc < colOffsetsDots.length) {
-              offsetMm = (parseInt(colOffsetsDots[cc], 10) || 0) * dotsToMm;
-            } else if (cc === 0) {
-              offsetMm = firstColOffsetMm;
-            }
-
-            var textW = measureTrackedWidthPx(cellText, bestFont, trackingPxPreview);
-            var areaXpx = (cellXmm2 + padXmm + offsetMm) * pxPerMm;
-            var areaWpx = innerWmm * pxPerMm;
-            var startXpx = areaXpx + (areaWpx - textW) / 2;
-            var centerYpx = (cellYmm2 + padYmm + innerHmm / 2) * pxPerMm;
-
-            var x = startXpx;
-            for (var k = 0; k < cellText.length; k++) {
-              ctx.fillText(cellText[k], x, centerYpx);
-              x += ctx.measureText(cellText[k]).width + trackingPxPreview;
-            }
+            var x = marginDots + cc * (cellWidth + colGapDots) + getColumnOffsetDots(cc, colOffsetsDots, firstColOffsetDots);
+            var y = gridTop + rr * (cellHeight + rowGapDots);
+            drawTrackedString(
+              ctx,
+              cellText,
+              bestFont,
+              trackingPx,
+              x + padX + extraLayoutX,
+              y + padY + extraLayoutY,
+              innerWidth,
+              innerHeight
+            );
           }
         }
         ctx.restore();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
 
         previewMetaEl.textContent =
-          widthMm + "×" + heightMm + " mm  /  " + cols + "×" + rows +
+          "預覽 " + widthMm + "×" + heightMm + " mm（10×16 cm）  /  列印 " + printWidthMm + "×" + printHeightMm +
+          " mm  /  " + cols + "×" + rows +
           "  /  字級≈" + Math.round(bestFont) + "px  /  scale " + scale +
-          "  /  spacing " + charSpaceDots + "px";
+          "  /  spacing " + charSpaceDots + "px" +
+          (shownCarrier ? "  /  載具 " + shownCarrier : "");
+      }
+
+      function drawCarrierBarcodeOnPreview(ctx, wDots, hDots, marginDots, gridTopDots) {
+        if (!shownCarrier || typeof JsBarcode === "undefined") return;
+        var tmp = document.createElement("canvas");
+        try {
+          JsBarcode(tmp, shownCarrier, {
+            format: "CODE39",
+            width: 3,
+            height: 72,
+            margin: 4,
+            displayValue: true,
+            fontSize: 18,
+            textMargin: 2,
+            background: "transparent",
+            lineColor: "#000000"
+          });
+        } catch (err) {
+          return;
+        }
+        var unusedH = Math.max(0, gridTopDots - marginDots);
+        var barAreaH = unusedH >= 16 ? unusedH : Math.max(16, hDots * 0.16);
+        var barY0 = unusedH >= 16 ? marginDots : Math.max(marginDots, hDots - marginDots - barAreaH);
+        var barW = Math.min(wDots * 0.86, tmp.width * (barAreaH * 0.9 / Math.max(1, tmp.height)));
+        var barH = tmp.height * (barW / Math.max(1, tmp.width));
+        var maxH = barAreaH * 0.92;
+        if (barH > maxH) {
+          barH = maxH;
+          barW = tmp.width * (barH / Math.max(1, tmp.height));
+        }
+        var barX = (wDots - barW) / 2;
+        var barY = barY0 + Math.max(0, (barAreaH - barH) / 2);
+        ctx.drawImage(tmp, barX, barY, barW, barH);
       }
 
       async function initJsZhuyin() {
@@ -824,6 +1394,15 @@
             b.textContent = label;
             b.setAttribute("aria-label", label);
             b.addEventListener("click", function () {
+              if (keyboardMode === "carrier") {
+                if (ch === "{show}" || label === "顯示載具") {
+                  showCarrierOnPreview();
+                  return;
+                }
+                appendCarrier(ch);
+                return;
+              }
+
               if (label === "送出") {
                 commitFirstCandidateOrComposition();
                 return;
@@ -854,45 +1433,79 @@
         btn.addEventListener("click", function() {
           var nextMode = btn.getAttribute("data-mode");
           if (!nextMode || nextMode === keyboardMode) return;
+          if (inputTarget === "carrier") return;
           if (keyboardMode === "zhuyin" && composition) {
             commitFirstCandidateOrComposition();
           }
           keyboardMode = nextMode;
+          nameKeyboardMode = nextMode;
           updateModeUi();
           renderKeyboard();
-          ta.focus();
         });
       });
 
+      nameFieldRow.addEventListener("click", function () {
+        setInputTarget("name");
+        ta.focus();
+      });
+      carrierFieldRow.addEventListener("click", function () {
+        setInputTarget("carrier");
+      });
+
+      ta.addEventListener("mousedown", function () {
+        if (composition) commitFirstCandidateOrComposition();
+      });
+      ta.addEventListener("mouseup", function () {
+        setInputTarget("name");
+        syncCaretFromInput();
+        renderPreview();
+      });
+
       document.getElementById("btnBksp").addEventListener("click", function () {
+        if (inputTarget === "carrier") {
+          backspaceCarrier();
+          return;
+        }
         if (composition) {
           if (ime) ime.handleKey("Backspace");
           return;
         }
         ta.focus();
-        var start = ta.selectionStart;
-        var end = ta.selectionEnd;
+        var arr = Array.from(committedName);
+        var start = committedCaret;
+        var end = committedCaret;
+        if (ta.selectionStart !== ta.selectionEnd) {
+          start = Array.from(String(ta.value || "").slice(0, ta.selectionStart)).length;
+          end = Array.from(String(ta.value || "").slice(0, ta.selectionEnd)).length;
+        }
         if (start !== end) {
-          ta.value = ta.value.slice(0, start) + ta.value.slice(end);
-          ta.selectionStart = ta.selectionEnd = start;
+          committedName = arr.slice(0, start).concat(arr.slice(end)).join("");
+          committedCaret = start;
+          paintNameInput();
+          renderPreview();
           return;
         }
-        if (start <= 0) return;
-        var v = ta.value;
-        var before = v.slice(0, start);
-        var arr = Array.from(before);
-        arr.pop();
-        ta.value = arr.join("") + v.slice(start);
-        ta.selectionStart = ta.selectionEnd = arr.join("").length;
+        if (committedCaret <= 0) return;
+        arr.splice(committedCaret - 1, 1);
+        committedName = arr.join("");
+        committedCaret -= 1;
+        paintNameInput();
+        renderPreview();
       });
 
       document.getElementById("btnClear").addEventListener("click", function () {
+        if (inputTarget === "carrier") {
+          clearCarrier();
+          return;
+        }
         composition = "";
         updateCompositionView();
         resetCandidatePager();
         renderCandidates();
+        committedName = "";
+        committedCaret = 0;
         ta.value = "";
-        ta.focus();
+        updateFieldDisplays();
         renderPreview();
       });
 
@@ -972,6 +1585,12 @@
       });
 
       ta.addEventListener("input", function () {
+        if (composition) {
+          paintNameInput();
+          return;
+        }
+        committedName = String(ta.value || "");
+        committedCaret = Array.from(committedName.slice(0, ta.selectionStart || 0)).length;
         renderPreview();
       });
 
@@ -979,23 +1598,65 @@
         if (composition) {
           commitFirstCandidateOrComposition();
         }
-        var t = String(ta.value || "").trim();
-        if (!t) {
-          alert("請先輸入要列印的內容（中文或注音皆可）。");
+        var t = String(committedName || "").trim();
+        var carrier = normalizeCarrier(carrierInput.value);
+        var hasValidCarrier = isValidCarrier(carrier);
+        if (carrier && !hasValidCarrier) {
+          alert("請輸入正確載具（/ 加上 7 碼，例如 /ABC1234）。");
           return;
         }
-        postToHost({ type: "tscNameLabelPrint", text: t, fontFamily: fontSelectEl.value });
+        if (!t && !hasValidCarrier) {
+          alert("請先輸入要列印的姓名或載具。");
+          return;
+        }
+        if (hasValidCarrier) {
+          shownCarrier = carrier;
+          renderPreview();
+        }
+        if (!postToHost({
+          type: "tscNameLabelPrint",
+          text: t,
+          carrier: hasValidCarrier ? carrier : "",
+          fontFamily: fontSelectEl.value
+        })) return;
+        enterPrintPage();
       });
+
+      document.getElementById("btnBack").addEventListener("click", function () {
+        resetSessionToIdle();
+      });
+
+      document.getElementById("step0").addEventListener("click", function () {
+        goToNameInput();
+      });
+
+      document.addEventListener("keydown", function(e) {
+        if (currentStep !== "idle") return;
+        if (e.key !== " " && e.code !== "Space") return;
+        if (e.repeat) return;
+        e.preventDefault();
+        var now = Date.now();
+        if (idleSpaceLastAt && now - idleSpaceLastAt > IDLE_SPACE_RESET_MS) {
+          idleSpaceTapCount = 0;
+        }
+        idleSpaceLastAt = now;
+        idleSpaceTapCount += 1;
+        if (idleSpaceTapCount >= 2) {
+          idleSpaceTapCount = 0;
+          idleSpaceLastAt = 0;
+          goToNameInput();
+        }
+      }, true);
 
       updateCompositionView();
       renderCandidates();
       updateModeUi();
       renderKeyboard();
+      updateFieldDisplays();
       setupHostDbBridge();
       initJsZhuyin();
-      applyDefaultLabelText(DEFAULT_LABEL_TEXT);
       renderPreview();
-      ta.focus();
+      showStep("idle");
     })();
   </script>
 </body>

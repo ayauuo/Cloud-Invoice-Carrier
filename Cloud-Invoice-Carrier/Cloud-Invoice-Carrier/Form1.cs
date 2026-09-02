@@ -160,6 +160,8 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
                             dpi = AppEnvConfig.TscDpi,
                             widthMm = AppEnvConfig.LabelWidthMm,
                             heightMm = AppEnvConfig.LabelHeightMm,
+                            previewWidthMm = AppEnvConfig.NameLabelPreviewWidthMm,
+                            previewHeightMm = AppEnvConfig.NameLabelPreviewHeightMm,
                             columns = AppEnvConfig.NameLabelColumns,
                             rows = AppEnvConfig.NameLabelRows,
                             columnGapMm = AppEnvConfig.NameLabelColumnGapMm,
@@ -283,6 +285,8 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
             public string? type { get; set; }
             /// <summary>姓名貼模式：要列印的中文字（送 TSC TSPL）。</summary>
             public string? text { get; set; }
+            /// <summary>姓名貼模式：要一並列印的載具條碼（CODE39）。</summary>
+            public string? carrier { get; set; }
             /// <summary>姓名貼模式：本次 BITMAP 渲染要使用的 Windows 字型家族名稱。</summary>
             public string? fontFamily { get; set; }
             public string? fileName { get; set; }
@@ -346,9 +350,10 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
                 if (msg.type.Equals("tscNameLabelPrint", StringComparison.OrdinalIgnoreCase))
                 {
                     var t = (msg.text ?? string.Empty).Trim();
-                    if (t.Length == 0)
+                    var carrier = (msg.carrier ?? string.Empty).Trim();
+                    if (t.Length == 0 && carrier.Length == 0)
                     {
-                        MessageBox.Show("請先輸入要列印的中文字。", "姓名貼列印", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show("請先輸入要列印的姓名或載具。", "姓名貼列印", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         return;
                     }
 
@@ -359,10 +364,13 @@ namespace Cloud_Invoice_Carrier   // TODO: 這裡改成你專案的 namespace
                             : msg.fontFamily.Trim();
                         TscTsplNameStickerPrinter.Print(
                             t,
+                            carrier,
                             AppEnvConfig.TscWindowsPrinterName,
                             AppEnvConfig.TscDpi,
                             AppEnvConfig.LabelWidthMm,
                             AppEnvConfig.LabelHeightMm,
+                            AppEnvConfig.NameLabelPreviewWidthMm,
+                            AppEnvConfig.NameLabelPreviewHeightMm,
                             AppEnvConfig.LabelGapMm,
                             AppEnvConfig.NameLabelColumns,
                             AppEnvConfig.NameLabelRows,

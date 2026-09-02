@@ -58,6 +58,12 @@ internal static class AppEnvConfig
     /// <summary>姓名貼排版可用高度（毫米）。0 表示使用整張標籤高度。</summary>
     public static double NameLabelGridHeightMm { get; private set; } = 0;
 
+    /// <summary>預覽底圖寬度（毫米）。0 表示跟 LABEL_WIDTH_MM。</summary>
+    public static double NameLabelPreviewWidthMm { get; private set; } = 100;
+
+    /// <summary>預覽底圖長度（毫米）。0 表示跟 LABEL_HEIGHT_MM。</summary>
+    public static double NameLabelPreviewHeightMm { get; private set; } = 160;
+
     /// <summary>姓名貼排版比例（字與間距一起縮放）。1.0 為原始比例。</summary>
     public static double NameLabelLayoutScale { get; private set; } = 1.0;
 
@@ -282,6 +288,14 @@ internal static class AppEnvConfig
             case "TSC_NAME_GRID_HEIGHT_MM":
                 if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var gridHeightMm) && gridHeightMm >= 0)
                     NameLabelGridHeightMm = gridHeightMm;
+                break;
+            case "NAME_LABEL_PREVIEW_WIDTH_MM":
+                if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var previewW) && previewW > 0)
+                    NameLabelPreviewWidthMm = previewW;
+                break;
+            case "NAME_LABEL_PREVIEW_HEIGHT_MM":
+                if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var previewH) && previewH > 0)
+                    NameLabelPreviewHeightMm = previewH;
                 break;
             case "NAME_LABEL_LAYOUT_SCALE":
             case "TSC_NAME_LAYOUT_SCALE":
