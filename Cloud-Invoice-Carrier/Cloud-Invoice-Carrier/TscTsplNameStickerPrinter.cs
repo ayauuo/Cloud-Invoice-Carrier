@@ -294,7 +294,14 @@ internal static class TscTsplNameStickerPrinter
             g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
 
-            DrawCarrierBarcode(g, carrier, widthDots, heightDots, dpi, printWidthMm, printHeightMm, previewWidthMm, previewHeightMm, gridHeightMm);
+            DrawCarrierBarcode(
+                g, carrier, widthDots, heightDots, dpi,
+                printWidthMm, printHeightMm, previewWidthMm, previewHeightMm, gridHeightMm,
+                AppEnvConfig.NameLabelBarcodeScale,
+                AppEnvConfig.NameLabelBarcodeWidthMm,
+                AppEnvConfig.NameLabelBarcodeHeightMm,
+                AppEnvConfig.NameLabelBarcodeOffsetXMm,
+                AppEnvConfig.NameLabelBarcodeOffsetYMm);
 
             if (!string.IsNullOrWhiteSpace(text))
             {
@@ -630,7 +637,12 @@ internal static class TscTsplNameStickerPrinter
         double printHeightMm,
         double previewWidthMm,
         double previewHeightMm,
-        double gridHeightMm)
+        double gridHeightMm,
+        double barcodeScale,
+        double barcodeWidthMm,
+        double barcodeHeightMm,
+        double barcodeOffsetXMm,
+        double barcodeOffsetYMm)
     {
         if (string.IsNullOrWhiteSpace(carrier))
             return;
@@ -663,8 +675,39 @@ internal static class TscTsplNameStickerPrinter
             barW = nativeW * (barH / nativeH);
         }
 
-        var barX = (layoutW - barW) / 2.0;
-        var barY = barY0 + Math.Max(0.0, (barAreaH - barH) / 2.0);
+        if (barcodeWidthMm > 0)
+        {
+            barW = barcodeWidthMm / 25.4 * dpi;
+            barH = barcodeHeightMm > 0
+                ? barcodeHeightMm / 25.4 * dpi
+                : barW * nativeH / nativeW;
+        }
+        else if (barcodeHeightMm > 0)
+        {
+            barH = barcodeHeightMm / 25.4 * dpi;
+            barW = barH * nativeW / nativeH;
+        }
+
+        var sizeScale = Math.Clamp(barcodeScale, 0.1, 4.0);
+        barW *= sizeScale;
+        barH *= sizeScale;
+
+        var maxBarW = layoutW * 0.98;
+        if (barW > maxBarW && barW > 0)
+        {
+            var fit = maxBarW / barW;
+            barW *= fit;
+            barH *= fit;
+        }
+        if (barH > barAreaH && barH > 0)
+        {
+            var fit = barAreaH / barH;
+            barW *= fit;
+            barH *= fit;
+        }
+
+        var barX = (layoutW - barW) / 2.0 + barcodeOffsetXMm / 25.4 * dpi;
+        var barY = barY0 + Math.Max(0.0, (barAreaH - barH) / 2.0) + barcodeOffsetYMm / 25.4 * dpi;
         var scaleX = printWidthDots / (double)layoutW;
         var scaleY = printHeightDots / (double)layoutH;
         var dest = new Rectangle(

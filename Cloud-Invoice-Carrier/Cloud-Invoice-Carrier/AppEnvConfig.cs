@@ -64,6 +64,21 @@ internal static class AppEnvConfig
     /// <summary>預覽底圖長度（毫米）。0 表示跟 LABEL_HEIGHT_MM。</summary>
     public static double NameLabelPreviewHeightMm { get; private set; } = 160;
 
+    /// <summary>載具條碼相對自動尺寸的縮放。1.0 為目前預設。</summary>
+    public static double NameLabelBarcodeScale { get; private set; } = 1.0;
+
+    /// <summary>載具條碼寬度（毫米）。0 表示依上方空白自動計算。</summary>
+    public static double NameLabelBarcodeWidthMm { get; private set; } = 0;
+
+    /// <summary>載具條碼高度（毫米）。0 表示依寬度等比。</summary>
+    public static double NameLabelBarcodeHeightMm { get; private set; } = 0;
+
+    /// <summary>載具條碼水平位移（毫米）。正值往右、負值往左。</summary>
+    public static double NameLabelBarcodeOffsetXMm { get; private set; } = 0;
+
+    /// <summary>載具條碼垂直位移（毫米）。正值往下、負值往上。</summary>
+    public static double NameLabelBarcodeOffsetYMm { get; private set; } = 0;
+
     /// <summary>姓名貼排版比例（字與間距一起縮放）。1.0 為原始比例。</summary>
     public static double NameLabelLayoutScale { get; private set; } = 1.0;
 
@@ -296,6 +311,26 @@ internal static class AppEnvConfig
             case "NAME_LABEL_PREVIEW_HEIGHT_MM":
                 if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var previewH) && previewH > 0)
                     NameLabelPreviewHeightMm = previewH;
+                break;
+            case "NAME_LABEL_BARCODE_SCALE":
+                if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var barcodeScale) && barcodeScale > 0)
+                    NameLabelBarcodeScale = Math.Clamp(barcodeScale, 0.1, 4.0);
+                break;
+            case "NAME_LABEL_BARCODE_WIDTH_MM":
+                if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var barcodeW) && barcodeW >= 0)
+                    NameLabelBarcodeWidthMm = barcodeW;
+                break;
+            case "NAME_LABEL_BARCODE_HEIGHT_MM":
+                if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var barcodeH) && barcodeH >= 0)
+                    NameLabelBarcodeHeightMm = barcodeH;
+                break;
+            case "NAME_LABEL_BARCODE_OFFSET_X_MM":
+                if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var barcodeOx))
+                    NameLabelBarcodeOffsetXMm = Math.Clamp(barcodeOx, -200, 200);
+                break;
+            case "NAME_LABEL_BARCODE_OFFSET_Y_MM":
+                if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var barcodeOy))
+                    NameLabelBarcodeOffsetYMm = Math.Clamp(barcodeOy, -200, 200);
                 break;
             case "NAME_LABEL_LAYOUT_SCALE":
             case "TSC_NAME_LAYOUT_SCALE":
