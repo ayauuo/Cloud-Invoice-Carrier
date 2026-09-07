@@ -349,7 +349,8 @@ internal static class TscTsplNameStickerPrinter
                 : text ?? string.Empty;
             var useTwoLineLayout = !multiLinePerRow && textLines.Length >= 2;
             var lineGapPx = Math.Max(1f, 1f * scale); // 手動雙行行距，隨比例同步放大。
-            var trackingPx = (float)charSpacingPx;
+            var overflow = ResolveNameOverflow(fitSample, charSpacingPx);
+            var trackingPx = overflow.TrackingPx;
             var layoutFormat = new StringFormat
             {
                 Alignment = StringAlignment.Center,
@@ -383,7 +384,7 @@ internal static class TscTsplNameStickerPrinter
             // 主要依寬度決定縮字；但加上高度上限保護，避免字完全被裁掉看不到。
             var widthDrivenHigh = innerWidth * (0.42f * scale);
             var heightSafetyHigh = innerHeight * 0.9f;
-            var high = Math.Max(low, Math.Min(widthDrivenHigh, heightSafetyHigh));
+            var high = Math.Max(low, Math.Min(widthDrivenHigh, heightSafetyHigh) * overflow.FontScale);
 
             float MeasureTrackedWidth(string raw, Font font)
             {
@@ -582,6 +583,33 @@ internal static class TscTsplNameStickerPrinter
             alignedBmp.RotateFlip(RotateFlipType.Rotate180FlipNone);
 
         return alignedBmp;
+    }
+
+    private readonly record struct NameOverflowFit(float TrackingPx, float FontScale);
+
+    private static NameOverflowFit ResolveNameOverflow(string sample, int baseSpacingPx)
+    {
+        var extra = Math.Max(0, CountPrintChars(sample) - AppEnvConfig.NameLabelOverflowBaseChars);
+        var tracking = Math.Clamp(
+            baseSpacingPx - extra * AppEnvConfig.NameLabelOverflowSpacingPx,
+            -200,
+            200);
+        var fontScale = (float)Math.Max(0.35, 1.0 - extra * AppEnvConfig.NameLabelOverflowFontRatio);
+        return new NameOverflowFit(tracking, fontScale);
+    }
+
+    private static int CountPrintChars(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return 0;
+
+        var n = 0;
+        foreach (var ch in text.Trim())
+        {
+            if (!char.IsWhiteSpace(ch))
+                n++;
+        }
+        return n;
     }
 
     private static byte[] ToTscBitmapData(Bitmap bmp, int threshold, int boldPx)

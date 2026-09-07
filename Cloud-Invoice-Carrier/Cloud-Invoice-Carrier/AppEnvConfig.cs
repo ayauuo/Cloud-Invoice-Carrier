@@ -88,6 +88,15 @@ internal static class AppEnvConfig
     /// <summary>姓名貼字元間距（像素）。正值加大、負值縮小。</summary>
     public static int NameLabelCharSpacingPx { get; private set; } = 0;
 
+    /// <summary>超過幾個字才開始縮小字距與字級（以最長一列、不含空白）。</summary>
+    public static int NameLabelOverflowBaseChars { get; private set; } = 3;
+
+    /// <summary>每多一個字，字距再減多少像素（正值更緊）。</summary>
+    public static int NameLabelOverflowSpacingPx { get; private set; } = 8;
+
+    /// <summary>每多一個字，字級再縮小的比例。0.1 表示縮小 10%。</summary>
+    public static double NameLabelOverflowFontRatio { get; private set; } = 0.1;
+
     /// <summary>第一欄文字水平位移（像素）。正值往右、負值往左。</summary>
     public static int NameLabelFirstColumnOffsetXPx { get; private set; } = 0;
 
@@ -355,6 +364,18 @@ internal static class AppEnvConfig
             case "TSC_NAME_CHAR_SPACING_PX":
                 if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var charSpacingPx))
                     NameLabelCharSpacingPx = Math.Clamp(charSpacingPx, -200, 200);
+                break;
+            case "NAME_LABEL_OVERFLOW_BASE_CHARS":
+                if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var overflowBase) && overflowBase > 0)
+                    NameLabelOverflowBaseChars = Math.Clamp(overflowBase, 1, 20);
+                break;
+            case "NAME_LABEL_OVERFLOW_SPACING_PX":
+                if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var overflowSpacing))
+                    NameLabelOverflowSpacingPx = Math.Clamp(overflowSpacing, 0, 80);
+                break;
+            case "NAME_LABEL_OVERFLOW_FONT_RATIO":
+                if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var overflowFontRatio) && overflowFontRatio >= 0)
+                    NameLabelOverflowFontRatio = Math.Clamp(overflowFontRatio, 0, 0.5);
                 break;
             case "NAME_LABEL_FIRST_COLUMN_OFFSET_X_PX":
             case "TSC_NAME_FIRST_COLUMN_OFFSET_X_PX":

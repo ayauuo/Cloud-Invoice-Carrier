@@ -1118,6 +1118,23 @@
         ctx.font = "bold " + fontPx + "px '" + fontFamily + "', 'Microsoft JhengHei', 'Noto Sans TC', sans-serif";
       }
 
+      function applyNameOverflow(sample, baseSpacing, cfg) {
+        var baseChars = Math.max(1, parseInt((cfg && cfg.overflowBaseChars), 10) || 3);
+        var spacingStep = Math.max(0, +((cfg && cfg.overflowSpacingPx) || 0));
+        var fontRatio = Math.max(0, Math.min(0.5, +((cfg && cfg.overflowFontRatio) || 0)));
+        var count = 0;
+        var raw = String(sample || "").trim();
+        for (var i = 0; i < raw.length; i++) {
+          if (!/\s/.test(raw[i])) count++;
+        }
+        var extra = Math.max(0, count - baseChars);
+        var tracking = baseSpacing - extra * spacingStep;
+        if (tracking < -200) tracking = -200;
+        if (tracking > 200) tracking = 200;
+        var fontScale = Math.max(0.35, 1 - extra * fontRatio);
+        return { extra: extra, tracking: tracking, fontScale: fontScale };
+      }
+
       // 近似 GDI+ MeasureString 預設左右留白（約 1/6 em），讓字距與縮字與印表機一致。
       function measureGdiCharWidth(ctx, ch, fontPx) {
         return ctx.measureText(ch).width + fontPx / 3;
@@ -1175,6 +1192,7 @@
           columns: 3, rows: 6,
           columnGapMm: 0.4, rowGapMm: 1, gridHeightMm: 90,
           layoutScale: 0.4, charSpacingPx: -30, dpi: 300,
+          overflowBaseChars: 3, overflowSpacingPx: 8, overflowFontRatio: 0.1,
           firstColumnOffsetXPx: 30, columnOffsetsXPx: [50, 20, -10], rotate180: true
         };
 
@@ -1255,11 +1273,14 @@
           return;
         }
 
+        var overflowFit = applyNameOverflow(fitSample, charSpaceDots, cfg);
+        trackingPx = overflowFit.tracking;
+
         var fontFamily = fontSelectEl.value || "Microsoft JhengHei";
         var lowFont = Math.max(8, 10 * scale);
         var widthDrivenHigh = innerWidth * (0.42 * scale);
         var heightSafetyHigh = innerHeight * 0.9;
-        var highFont = Math.max(lowFont, Math.min(widthDrivenHigh, heightSafetyHigh));
+        var highFont = Math.max(lowFont, Math.min(widthDrivenHigh, heightSafetyHigh) * overflowFit.fontScale);
         var bestFont = lowFont;
         for (var iter = 0; iter < 36 && (highFont - lowFont) > 0.35; iter++) {
           var mid = (highFont + lowFont) * 0.5;
@@ -1297,7 +1318,7 @@
           "預覽 " + widthMm + "×" + heightMm + " mm（10×16 cm）  /  列印 " + printWidthMm + "×" + printHeightMm +
           " mm  /  " + cols + "×" + rows +
           "  /  字級≈" + Math.round(bestFont) + "px  /  scale " + scale +
-          "  /  spacing " + charSpaceDots + "px" +
+          "  /  spacing " + Math.round(trackingPx) + "px" +
           (shownCarrier ? "  /  載具 " + shownCarrier : "");
       }
 
